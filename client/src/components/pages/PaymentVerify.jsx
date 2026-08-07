@@ -1,6 +1,6 @@
 // PaymentVerify.jsx — src/components/pages/PaymentVerify.jsx
 // Flutterwave redirects here with ?transaction_id=xxx&tx_ref=yyy&status=zzz
-// We call POST /api/payments/verify, then navigate to /dashboard
+// We call POST /api/payments/verify, then navigate to /login
 
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -54,8 +54,8 @@ export default function PaymentVerify() {
         if (res.ok) {
           setPayment(data.payment || null);
           setStage("success");
-          // ✅ After 2.5s redirect to dashboard so it re-fetches with new payment
-          setTimeout(() => navigate("/dashboard?payment=success"), 2500);
+          // ✅ After 2.5s redirect to login
+          setTimeout(() => navigate("/login"), 2500);
         } else {
           setStage("failed");
           setMessage(data.message || "Payment verification failed.");
@@ -153,7 +153,7 @@ export default function PaymentVerify() {
               )}
 
               <p style={{ fontSize:13, color:"#A78BFA", marginTop:16 }}>
-                Redirecting to your dashboard…
+                Redirecting to login…
               </p>
             </div>
           )}
@@ -178,9 +178,9 @@ export default function PaymentVerify() {
                 </button>
                 <button
                   style={S.primaryBtn}
-                  onClick={() => navigate("/dashboard")}
+                  onClick={() => navigate("/login")}
                 >
-                  Go to Dashboard
+                  Go to Login
                 </button>
               </div>
             </div>

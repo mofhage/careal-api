@@ -80,7 +80,8 @@ function Signup() {
         localStorage.setItem("careal_token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
       }
-      navigate("/dashboard");
+      // navigate("/dashboard");
+      navigate("/login");
     } catch (err) {
       console.error("Signup error:", err.response?.data || err.message);
       setError(err.response?.data?.message || err.message);

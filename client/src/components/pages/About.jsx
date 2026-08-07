@@ -73,8 +73,7 @@ export default function About() {
           <p className="about-mission-text">
             Millions of Nigerians lose hours — sometimes days — to government queues
             just to keep their vehicles legal. CAREAL exists to change that.
-            We connect car owners with certified agents who handle the full renewal
-            process on their behalf, tracked every step of the way.
+            We handle the full renewal process and tracked every step of the way.
           </p>
         </div>
       </div>
