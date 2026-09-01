@@ -12,8 +12,14 @@ import authRoutes from './routes/auth.js';
 import verifyRoutes from './routes/verify.js';
 import paymentsRoutes from './routes/payments.js';
 import vehiclesRouter from './routes/vehicles.js';
+import ordersRoutes from './routes/orders.js';
+import agentsRoutes from './routes/agents.js';
+import messagesRoutes from './routes/messages.js';
+import pricesRoutes from './routes/prices.js';
 
 console.log('JWT_SECRET loaded?', !!process.env.JWT_SECRET);
+console.log('STAFF_JWT_SECRET loaded?', !!process.env.STAFF_JWT_SECRET);
+console.log('RESEND_API_KEY loaded?', !!process.env.RESEND_API_KEY);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
 const app = express();
@@ -48,6 +54,10 @@ app.use('/api/auth',     authRoutes);
 app.use('/api/verify',   verifyRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/vehicles', vehiclesRouter);
+app.use('/api/orders',   ordersRoutes);
+app.use('/api/agents',   agentsRoutes);
+app.use('/api/messages', messagesRoutes);
+app.use('/api/prices',   pricesRoutes);
 
 // ── JWT middleware (used by /api/profile below) ───────────────────────────────
 const customProtect = (req, res, next) => {

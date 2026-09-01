@@ -1,21 +1,91 @@
 
 //    payments.js needs FRONTEND_URL (singular) for the Flutterwave redirect_url.
 //   //      FRONTEND_URL=http://localhost:5173
-//  
+//
+// UPDATE: adds delivery_method capture on /initiate, a /webhook endpoint as
+// the source of truth for "paid" (independent of the client calling /verify),
+// and a shared recordPayment() helper so /verify and /webhook can't drift.
 import express from 'express';
 import pool from '../db.js';
 import { protect } from '../src/middleware/auth.js';
-import ServicePrice from '../ServicePrice.js';
+import { getServicePrices } from '../services/servicePriceService.js';
 import axios from 'axios';
 import crypto from 'crypto';
+import { tryAutoAssign } from '../services/agentAssignmentService.js';
 
 const router = express.Router();
 
 // ─────────────────────────────────────────────
+// Shared: record a verified Flutterwave payment into vehicle_payments.
+// Used by both POST /verify (client-triggered, fast path for the redirect
+// UX) and POST /webhook (server-triggered, the reconciliation source of
+// truth). Idempotent on payment_ref either way.
+// ─────────────────────────────────────────────
+async function recordPayment(flwData) {
+  const meta = flwData.meta || {};
+  const reg_number = (meta.plate_number || '').toUpperCase();
+  const license = meta.license === 'true';
+  const roadworthiness = meta.roadworthiness === 'true';
+  const insurance = meta.insurance === 'true';
+  const license_amount = Number(meta.license_amount || 0);
+  const roadworthiness_amount = Number(meta.roadworthiness_amount || 0);
+  const insurance_amount = Number(meta.insurance_amount || 0);
+  const amount = license_amount + roadworthiness_amount + insurance_amount;
+  const delivery_method = meta.delivery_method === 'personal_collection' ? 'personal_collection' : 'logistics';
+  const tx_ref = flwData.tx_ref;
+  const user_id = meta.user_id;
+
+  if (!reg_number) {
+    throw new Error('Payment meta missing plate number — cannot record.');
+  }
+  if (!user_id) {
+    throw new Error('Payment meta missing user_id — cannot record.');
+  }
+
+  const existing = await pool.query('SELECT id FROM vehicle_payments WHERE payment_ref = $1', [tx_ref]);
+  if (existing.rows.length > 0) {
+    return { alreadyRecorded: true, payment: existing.rows[0] };
+  }
+
+  const result = await pool.query(
+    `INSERT INTO vehicle_payments (
+      user_id, reg_number,
+      license, roadworthiness, insurance,
+      license_amount, roadworthiness_amount, insurance_amount,
+      amount, payment_ref, delivery_method,
+      license_status, roadworthiness_status, insurance_status,
+      status
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+      $12, $13, $14, 'paid'
+    ) RETURNING *`,
+    [
+      user_id,
+      reg_number,
+      license,
+      roadworthiness,
+      insurance,
+      license_amount,
+      roadworthiness_amount,
+      insurance_amount,
+      amount,
+      tx_ref,
+      delivery_method,
+      license ? 'Pending' : 'N/A',
+      roadworthiness ? 'Pending' : 'N/A',
+      insurance ? 'Pending' : 'N/A',
+    ]
+  );
+
+  return { alreadyRecorded: false, payment: result.rows[0] };
+}
+
+// ─────────────────────────────────────────────
 // POST /api/payments/initiate
+// body now also accepts: delivery_method ('logistics' | 'personal_collection')
 // ─────────────────────────────────────────────
 router.post('/initiate', protect, async (req, res) => {
-  const { plate_number, license, roadworthiness, insurance } = req.body;
+  const { plate_number, license, roadworthiness, insurance, delivery_method } = req.body;
 
   if (!plate_number) {
     return res.status(400).json({ message: 'plate_number is required' });
@@ -23,6 +93,11 @@ router.post('/initiate', protect, async (req, res) => {
   if (!license && !roadworthiness && !insurance) {
     return res.status(400).json({ message: 'At least one service must be selected' });
   }
+  if (delivery_method && !['logistics', 'personal_collection'].includes(delivery_method)) {
+    return res.status(400).json({ message: 'delivery_method must be logistics or personal_collection' });
+  }
+
+  const ServicePrice = await getServicePrices();
 
   const license_amount        = license        ? ServicePrice.licence.price        : 0;
   const roadworthiness_amount = roadworthiness ? ServicePrice.road_worthiness.price : 0;
@@ -67,6 +142,7 @@ router.post('/initiate', protect, async (req, res) => {
         license_amount,
         roadworthiness_amount,
         insurance_amount,
+        delivery_method:       delivery_method || 'logistics',
       },
       customizations: {
         title:       'CAREAL Services',
@@ -106,7 +182,8 @@ router.post('/initiate', protect, async (req, res) => {
 
 // ─────────────────────────────────────────────
 // POST /api/payments/verify
-// Called by PaymentVerify.jsx after Flutterwave redirect
+// Called by PaymentVerify.jsx after Flutterwave redirect. Fast path for the
+// user's own UX — /webhook below is the reconciliation source of truth.
 // ─────────────────────────────────────────────
 router.post('/verify', protect, async (req, res) => {
   const { transaction_id, tx_ref } = req.body;
@@ -132,71 +209,66 @@ router.post('/verify', protect, async (req, res) => {
       return res.status(402).json({ message: 'Payment verification failed or payment was not successful.' });
     }
 
-    const meta                  = flwData.meta || {};
-    // ✅ FIX: Supabase column is reg_number, not plate_number
-    const reg_number            = (meta.plate_number || '').toUpperCase();
-    const license               = meta.license        === 'true';
-    const roadworthiness        = meta.roadworthiness === 'true';
-    const insurance             = meta.insurance      === 'true';
-    const license_amount        = Number(meta.license_amount        || 0);
-    const roadworthiness_amount = Number(meta.roadworthiness_amount || 0);
-    const insurance_amount      = Number(meta.insurance_amount      || 0);
-    const amount                = license_amount + roadworthiness_amount + insurance_amount;
+    const { alreadyRecorded, payment } = await recordPayment(flwData);
 
-    if (!reg_number) {
-      console.error('No plate number in Flutterwave meta:', meta);
-      return res.status(400).json({ message: 'Payment meta missing plate number — cannot record.' });
+    if (alreadyRecorded) {
+      return res.status(200).json({ message: 'Payment already recorded', payment_id: payment.id });
     }
 
-    // Idempotency — don't double-record the same transaction
-    const existing = await pool.query(
-      'SELECT id FROM vehicle_payments WHERE payment_ref = $1',
-      [tx_ref]
-    );
-    if (existing.rows.length > 0) {
-      return res.status(200).json({
-        message:    'Payment already recorded',
-        payment_id: existing.rows[0].id,
-      });
-    }
-
-    const result = await pool.query(
-      `INSERT INTO vehicle_payments (
-        user_id, reg_number,
-        license, roadworthiness, insurance,
-        license_amount, roadworthiness_amount, insurance_amount,
-        amount, payment_ref,
-        license_status, roadworthiness_status, insurance_status,
-        status
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, 'paid'
-      ) RETURNING *`,
-      [
-        req.user.id,
-        reg_number,
-        license,
-        roadworthiness,
-        insurance,
-        license_amount,
-        roadworthiness_amount,
-        insurance_amount,
-        amount,
-        tx_ref,
-        license        ? 'Pending' : 'N/A',
-        roadworthiness ? 'Pending' : 'N/A',
-        insurance      ? 'Pending' : 'N/A',
-      ]
+    // Best-effort — auto-assignment failures should never break the user's
+    // "your payment succeeded" response.
+    tryAutoAssign(payment.id).catch((err) =>
+      console.error('tryAutoAssign (via /verify) failed:', err.message)
     );
 
     return res.status(201).json({
       message: 'Payment verified and recorded successfully',
-      payment: result.rows[0],
+      payment,
     });
 
   } catch (err) {
     console.error('Verify payment error:', err?.response?.data || err.message);
     return res.status(500).json({ message: 'Failed to verify payment', error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /api/payments/webhook
+// Flutterwave server-to-server webhook — configure this URL in your
+// Flutterwave dashboard, with FLW_SECRET_HASH set to the same value there.
+// This is what makes "money in" reliable even if the user closes the tab
+// before /verify ever fires.
+// No auth middleware — Flutterwave calls this directly; verif-hash is the auth.
+// ─────────────────────────────────────────────
+router.post('/webhook', async (req, res) => {
+  const signature = req.headers['verif-hash'];
+
+  if (!signature || signature !== process.env.FLW_SECRET_HASH) {
+    console.warn('Webhook received with missing/invalid verif-hash');
+    return res.status(401).json({ message: 'Invalid signature' });
+  }
+
+  // Acknowledge immediately — Flutterwave retries on non-2xx/timeout, and we
+  // don't want a slow DB/email call to cause duplicate deliveries.
+  res.status(200).json({ message: 'Received' });
+
+  try {
+    const event = req.body;
+    if (event.event !== 'charge.completed' || event.data?.status !== 'successful') {
+      return; // ignore anything that isn't a successful charge
+    }
+
+    const { alreadyRecorded, payment } = await recordPayment(event.data);
+    if (alreadyRecorded) {
+      return;
+    }
+
+    await tryAutoAssign(payment.id);
+  } catch (err) {
+    console.error('Webhook processing error:', err.message);
+    // Already responded 200 to Flutterwave — this is now purely internal
+    // logging. If this happens often, check the FLW dashboard's delivery
+    // log and re-trigger, or reconcile manually via GET /api/orders.
   }
 });
 
