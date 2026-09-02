@@ -31,7 +31,7 @@ async function recordPayment(flwData) {
   const roadworthiness_amount = Number(meta.roadworthiness_amount || 0);
   const insurance_amount = Number(meta.insurance_amount || 0);
   const amount = license_amount + roadworthiness_amount + insurance_amount;
-  const delivery_method = meta.delivery_method === 'personal_collection' ? 'personal_collection' : 'logistics';
+  const delivery_method = meta.delivery_method === 'personal_collection' ? 'personal_collection' : 'agent_delivery';
   const tx_ref = flwData.tx_ref;
   const user_id = meta.user_id;
 
@@ -82,7 +82,7 @@ async function recordPayment(flwData) {
 
 // ─────────────────────────────────────────────
 // POST /api/payments/initiate
-// body now also accepts: delivery_method ('logistics' | 'personal_collection')
+// body now also accepts: delivery_method ('agent_delivery' | 'personal_collection')
 // ─────────────────────────────────────────────
 router.post('/initiate', protect, async (req, res) => {
   const { plate_number, license, roadworthiness, insurance, delivery_method } = req.body;
@@ -93,8 +93,8 @@ router.post('/initiate', protect, async (req, res) => {
   if (!license && !roadworthiness && !insurance) {
     return res.status(400).json({ message: 'At least one service must be selected' });
   }
-  if (delivery_method && !['logistics', 'personal_collection'].includes(delivery_method)) {
-    return res.status(400).json({ message: 'delivery_method must be logistics or personal_collection' });
+  if (delivery_method && !['agent_delivery', 'personal_collection'].includes(delivery_method)) {
+    return res.status(400).json({ message: 'delivery_method must be agent_delivery or personal_collection' });
   }
 
   const ServicePrice = await getServicePrices();
@@ -142,7 +142,7 @@ router.post('/initiate', protect, async (req, res) => {
         license_amount,
         roadworthiness_amount,
         insurance_amount,
-        delivery_method:       delivery_method || 'logistics',
+        delivery_method:       delivery_method || 'agent_delivery',
       },
       customizations: {
         title:       'CAREAL Services',

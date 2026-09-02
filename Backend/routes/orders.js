@@ -128,10 +128,10 @@ router.post('/:id/pick', protectStaff, requireRole('field_agent'), async (req, r
 
 // ─────────────────────────────────────────────
 // POST /api/orders/:id/assign
-// super_admin only — manually assign to a chosen agent
+// super_admin OR contact_agent — manually assign to a chosen field agent
 // body: { agent_id }
 // ─────────────────────────────────────────────
-router.post('/:id/assign', protectStaff, requireRole('super_admin'), async (req, res) => {
+router.post('/:id/assign', protectStaff, requireRole('super_admin', 'contact_agent'), async (req, res) => {
   const { agent_id } = req.body;
   if (!agent_id) {
     return res.status(400).json({ message: 'agent_id is required' });
@@ -154,7 +154,7 @@ router.post('/:id/assign', protectStaff, requireRole('super_admin'), async (req,
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    await logStatus(req.params.id, 'assigned', 'staff', req.staff.id, 'manually assigned by super admin');
+    await logStatus(req.params.id, 'assigned', 'staff', req.staff.id, `manually assigned by ${req.staff.role}`);
 
     const order = result.rows[0];
     await sendAgentAssignmentEmail(agentResult.rows[0].email, {
