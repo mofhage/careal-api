@@ -16,6 +16,7 @@ import ordersRoutes from './routes/orders.js';
 import agentsRoutes from './routes/agents.js';
 import messagesRoutes from './routes/messages.js';
 import pricesRoutes from './routes/prices.js';
+import { bootstrapSuperAdmin } from './services/bootstrapSuperAdmin.js';
 
 console.log('JWT_SECRET loaded?', !!process.env.JWT_SECRET);
 console.log('STAFF_JWT_SECRET loaded?', !!process.env.STAFF_JWT_SECRET);
@@ -125,6 +126,8 @@ app.use((req, res) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+bootstrapSuperAdmin().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  });
 });
