@@ -1,4 +1,4 @@
-// Footer.jsx — Redesigned
+// Footer.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Careal_logo from "../assets/images/Careal_logo.jpeg";

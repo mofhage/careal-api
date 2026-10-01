@@ -2,14 +2,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../Header.jsx";
+import { getPrices } from "../../utils/priceStore.js";
 import "./Services.css";
 
-const SERVICE_PRICES = {
+const SERVICE_CONFIGS = {
   license: {
     key:      "license",
+    priceKey: "licence",
     label:    "Vehicle Licence Renewal",
     desc:     "Renew your vehicle licence quickly and easily without visiting the office.",
-    price:    2500,
     duration: "1–2 business days",
     docs:     "Vehicle licence copy, valid ID",
     icon:     "📋",
@@ -18,9 +19,9 @@ const SERVICE_PRICES = {
   },
   roadworthiness: {
     key:      "roadworthiness",
+    priceKey: "road_worthiness",
     label:    "Road Worthiness Certificate",
     desc:     "Get your road worthiness certificate renewed hassle-free by certified agents.",
-    price:    13000,
     duration: "2–3 business days",
     docs:     "Vehicle inspection report, valid ID",
     icon:     "🛡️",
@@ -29,9 +30,9 @@ const SERVICE_PRICES = {
   },
   insurance: {
     key:      "insurance",
+    priceKey: "insurance",
     label:    "Vehicle Insurance Renewal",
     desc:     "Renew your motor insurance with verified providers online.",
-    price:    15000,
     duration: "1 business day",
     docs:     "Previous insurance document",
     icon:     "📄",
@@ -46,6 +47,19 @@ const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 function PublicServicesView() {
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
+
+  const [prices,       setPrices]       = useState(null);
+  const [pricesError,  setPricesError]  = useState(false);
+  const [pricesLoading, setPricesLoading] = useState(true);
+
+  useEffect(() => {
+    setPricesLoading(true);
+    getPrices()
+      .then(data => { setPrices(data); setPricesLoading(false); })
+      .catch(() => { setPricesError(true); setPricesLoading(false); });
+  }, []);
+
+  const getPrice = (priceKey) => prices?.[priceKey]?.price ?? 0;
 
   return (
     <div className="pub-svc-root">
@@ -70,12 +84,20 @@ function PublicServicesView() {
         </div>
       </div>
 
+      {/* Price error banner */}
+      {pricesError && (
+        <div className="svc-error-banner" style={{ margin: "16px auto", maxWidth: 800 }}>
+          ⚠️ Could not load service prices. Please refresh to try again.
+        </div>
+      )}
+
       {/* Service Cards */}
       <div className="pub-svc-cards-section">
         <div className="pub-svc-cards-grid">
-          {Object.values(SERVICE_PRICES).map((svc) => {
+          {Object.values(SERVICE_CONFIGS).map((svc) => {
             const [from, to] = svc.color;
             const isHovered  = hovered === svc.key;
+            const price      = getPrice(svc.priceKey);
             return (
               <div
                 key={svc.key}
@@ -109,8 +131,16 @@ function PublicServicesView() {
 
                 <div className="pub-svc-card-bottom">
                   <div className="pub-svc-price" style={{ color: from }}>
-                    ₦{svc.price.toLocaleString()}
-                    <span className="pub-svc-price-label">Fixed Fee</span>
+                    {pricesLoading ? (
+                      <span className="svc-price-skeleton">Loading…</span>
+                    ) : pricesError ? (
+                      <span className="svc-price-skeleton">—</span>
+                    ) : (
+                      <>
+                        ₦{price.toLocaleString()}
+                        <span className="pub-svc-price-label">Fixed Fee</span>
+                      </>
+                    )}
                   </div>
                   <button
                     className="pub-svc-cta-btn"
@@ -152,15 +182,27 @@ export default function Services() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  const [user,        setUser]        = useState(null);
-  const [vehicles,    setVehicles]    = useState([]);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [isLoggedIn,  setIsLoggedIn]  = useState(false);
-  const [selected,    setSelected]    = useState({ license: false, roadworthiness: false, insurance: false });
-  const [plateNumber, setPlateNumber] = useState("");
-  const [showModal,   setShowModal]   = useState(false);
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState("");
+  const [user,         setUser]         = useState(null);
+  const [vehicles,     setVehicles]     = useState([]);
+  const [authLoading,  setAuthLoading]  = useState(true);
+  const [isLoggedIn,   setIsLoggedIn]   = useState(false);
+  const [selected,     setSelected]     = useState({ license: false, roadworthiness: false, insurance: false });
+  const [plateNumber,  setPlateNumber]  = useState("");
+  const [showModal,    setShowModal]    = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState("");
+
+  const [prices,        setPrices]        = useState(null);
+  const [pricesError,   setPricesError]   = useState(false);
+  const [pricesLoading, setPricesLoading] = useState(true);
+
+  // Fetch prices on mount
+  useEffect(() => {
+    setPricesLoading(true);
+    getPrices()
+      .then(data => { setPrices(data); setPricesLoading(false); })
+      .catch(() => { setPricesError(true); setPricesLoading(false); });
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("careal_token");
@@ -192,10 +234,13 @@ export default function Services() {
       .finally(() => setAuthLoading(false));
   }, [navigate]);
 
-  const selectedServices = Object.entries(SERVICE_PRICES).filter(([k]) => selected[k]);
-  const total     = selectedServices.reduce((sum, [, s]) => sum + s.price, 0);
+  // Helper to get price for a service
+  const getPrice = (priceKey) => prices?.[priceKey]?.price ?? 0;
+
+  const selectedServices = Object.entries(SERVICE_CONFIGS).filter(([k]) => selected[k]);
+  const total     = selectedServices.reduce((sum, [, s]) => sum + getPrice(s.priceKey), 0);
   const hasSelection = selectedServices.length > 0;
-  const canProceed   = hasSelection && !!plateNumber;
+  const canProceed   = hasSelection && !!plateNumber && !pricesLoading && !pricesError;
 
   const disabledReason = !hasSelection && !plateNumber ? "Select a service and a vehicle to continue"
     : !hasSelection ? "Select at least one service to continue"
@@ -233,6 +278,32 @@ export default function Services() {
 
   // Not logged in → show public services page
   if (!isLoggedIn) return <PublicServicesView />;
+
+  // Logged in but prices failed → show error banner, hide payment UI
+  if (pricesError) {
+    return (
+      <>
+        <div className="svc-root">
+          <nav className="svc-nav">
+            <div className="svc-nav-logo">CAR<span>EAL</span></div>
+            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+              <button className="svc-dash-link" onClick={() => navigate("/dashboard")}>← Dashboard</button>
+              <div className="svc-avatar">
+                {user ? `${user.first_name?.[0]||""}${user.last_name?.[0]||""}` : "?"}
+              </div>
+            </div>
+          </nav>
+          <div className="svc-scroll">
+            <div className="svc-page">
+              <div className="svc-error-banner" style={{ marginTop: 32 }}>
+                ⚠️ Could not load service prices. Please refresh to try again.
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   // Logged in → show the payment flow
   return (
@@ -277,8 +348,9 @@ export default function Services() {
             </div>
 
             <div className="svc-grid">
-              {Object.values(SERVICE_PRICES).map((svc) => {
-                const on = selected[svc.key];
+              {Object.values(SERVICE_CONFIGS).map((svc) => {
+                const on    = selected[svc.key];
+                const price = getPrice(svc.priceKey);
                 return (
                   <div key={svc.key} className={`svc-card${on ? " selected" : ""}`}
                     onClick={() => toggle(svc.key)} role="checkbox" aria-checked={on}
@@ -296,7 +368,11 @@ export default function Services() {
                       </div>
                     </div>
                     <div className="svc-price-tag" style={{ color: on ? "#7C3AED" : "#A78BFA" }}>
-                      ₦{svc.price.toLocaleString()}
+                      {pricesLoading ? (
+                        <span className="svc-price-skeleton">Loading…</span>
+                      ) : (
+                        `₦${price.toLocaleString()}`
+                      )}
                     </div>
                   </div>
                 );
@@ -312,7 +388,14 @@ export default function Services() {
             {hasSelection ? (
               <>
                 <div className="svc-summary-label">{selectedServices.length} service{selectedServices.length > 1 ? "s" : ""} selected</div>
-                <div className="svc-summary-total">Total: ₦{total.toLocaleString()}</div>
+                <div className="svc-summary-total">
+                  Total:{" "}
+                  {pricesLoading ? (
+                    <span className="svc-price-skeleton">Loading…</span>
+                  ) : (
+                    `₦${total.toLocaleString()}`
+                  )}
+                </div>
               </>
             ) : (
               <div className="svc-summary-label empty">Tick a service above to get started</div>
@@ -335,12 +418,15 @@ export default function Services() {
             <h2 className="svc-modal-title">Confirm Payment</h2>
             <p className="svc-modal-sub">Vehicle: <strong>{plateNumber}</strong></p>
             <div className="svc-divider" />
-            {selectedServices.map(([, svc]) => (
-              <div key={svc.key} className="svc-modal-row">
-                <span>{svc.icon} {svc.label}</span>
-                <span style={{ fontWeight:700 }}>₦{svc.price.toLocaleString()}</span>
-              </div>
-            ))}
+            {selectedServices.map(([, svc]) => {
+              const price = getPrice(svc.priceKey);
+              return (
+                <div key={svc.key} className="svc-modal-row">
+                  <span>{svc.icon} {svc.label}</span>
+                  <span style={{ fontWeight:700 }}>₦{price.toLocaleString()}</span>
+                </div>
+              );
+            })}
             <div className="svc-divider" />
             <div className="svc-modal-row" style={{ fontWeight:800, fontSize:17, color:"#7C3AED" }}>
               <span>Total</span><span>₦{total.toLocaleString()}</span>
