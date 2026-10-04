@@ -1,14 +1,15 @@
 // Dashboard.jsx — Redesigned with animated cards
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { statusToStage, getDeliveryLabel } from "../../utils/orderStatus.js";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 const statusConfig = {
   Pending:    { bg: "#FFF7ED", text: "#C2570A", dot: "#F97316", label: "Pending" },
   Processing: { bg: "#EFF6FF", text: "#1D4ED8", dot: "#3B82F6", label: "Processing" },
-  Delivered:  { bg: "#F0FDF4", text: "#15803D", dot: "#22C55E", label: "Delivered" },
-  Done:       { bg: "#F0FDF4", text: "#15803D", dot: "#22C55E", label: "Done" },
+  Delivered:  { bg: "#F0FDF4", text: "#15803D", dot: "#22C55E", label: "Completed" },
+  Done:       { bg: "#F0FDF4", text: "#15803D", dot: "#22C55E", label: "Completed" },
   "N/A":      { bg: "#F9FAFB", text: "#9CA3AF", dot: "#D1D5DB", label: "N/A" },
 };
 
@@ -30,18 +31,58 @@ function expandServices(pmt) {
   const rows = [];
   if (pmt.license && pmt.license_status !== "N/A")
     rows.push({ id: `${pmt.id}-license`, name: "Vehicle License", icon: "📋",
-      amount: pmt.license_amount, status: pmt.license_status || "Pending", ref: pmt.payment_ref });
+      amount: pmt.license_amount, status: pmt.license_status || "Pending", ref: pmt.payment_ref,
+      orderStatus: pmt.status, deliveryMethod: pmt.delivery_method });
   if (pmt.roadworthiness && pmt.roadworthiness_status !== "N/A")
     rows.push({ id: `${pmt.id}-roadworthiness`, name: "Road Worthiness", icon: "🛡️",
-      amount: pmt.roadworthiness_amount, status: pmt.roadworthiness_status || "Pending", ref: pmt.payment_ref });
+      amount: pmt.roadworthiness_amount, status: pmt.roadworthiness_status || "Pending", ref: pmt.payment_ref,
+      orderStatus: pmt.status, deliveryMethod: pmt.delivery_method });
   if (pmt.insurance && pmt.insurance_status !== "N/A")
     rows.push({ id: `${pmt.id}-insurance`, name: "Motor Insurance", icon: "📄",
-      amount: pmt.insurance_amount, status: pmt.insurance_status || "Pending", ref: pmt.payment_ref });
+      amount: pmt.insurance_amount, status: pmt.insurance_status || "Pending", ref: pmt.payment_ref,
+      orderStatus: pmt.status, deliveryMethod: pmt.delivery_method });
   return rows;
 }
 
 function normalisePmt(pmt) {
   return { ...pmt, plate_number: pmt.plate_number || pmt.reg_number || "" };
+}
+
+const STAGE_LABELS = ["Paid", "In Progress", "Ready", "Delivered"];
+
+function OrderProgressBar({ status, deliveryMethod }) {
+  const activeStage = statusToStage(status);
+  const finalLabel = getDeliveryLabel(deliveryMethod);
+  const labels = ["Paid", "In Progress", "Ready", finalLabel];
+  const isUnknown = !["paid","assigned","in_progress","ready_for_delivery","ready_for_pickup","delivered","collected"].includes(status);
+
+  return (
+    <div className="opb-root">
+      <div className="opb-track">
+        {labels.map((label, idx) => {
+          const stageNum = idx + 1;
+          const isDone   = stageNum < activeStage;
+          const isActive = stageNum === activeStage;
+          return (
+            <React.Fragment key={label}>
+              <div className="opb-step">
+                <div className={`opb-dot ${isDone ? "done" : ""} ${isActive ? "active" : ""}`}>
+                  {isDone ? "✓" : stageNum}
+                </div>
+                <div className={`opb-label ${isActive ? "active" : ""}`}>{label}</div>
+              </div>
+              {idx < labels.length - 1 && (
+                <div className={`opb-line ${stageNum < activeStage ? "done" : ""}`} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      {isUnknown && status && (
+        <div className="opb-unknown">Status: {status}</div>
+      )}
+    </div>
+  );
 }
 
 function VehicleCard({ vehicle, payments, onPayService, index }) {
@@ -111,6 +152,14 @@ function VehicleCard({ vehicle, payments, onPayService, index }) {
             </div>
           ) : (
             <>
+              {vehiclePayments.map(pmt => (
+                <div key={`opb-${pmt.id}`} style={{ marginBottom: 16 }}>
+                  <OrderProgressBar
+                    status={pmt.status}
+                    deliveryMethod={pmt.delivery_method}
+                  />
+                </div>
+              ))}
               <div className="services-table-head">
                 <span>Service</span>
                 <span>Status</span>
@@ -534,4 +583,23 @@ body { background: #F8F6FF; font-family: 'DM Sans', sans-serif; color: #1E1040; 
   .dash-cta-row { flex-direction:column; text-align:center; }
   .dash-toast { font-size:12px; padding:10px 18px; white-space:normal; text-align:center; max-width:90vw; }
 }
+
+/* Order Progress Bar */
+.opb-root { margin: 8px 0 16px; }
+.opb-track { display:flex; align-items:center; gap:0; }
+.opb-step { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+.opb-dot {
+  width:28px; height:28px; border-radius:50%;
+  background:#E5E7EB; color:#9CA3AF;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; border:2px solid #E5E7EB;
+  transition:all 0.2s;
+}
+.opb-dot.active { background:#7C3AED; color:#fff; border-color:#7C3AED; }
+.opb-dot.done   { background:#22C55E; color:#fff; border-color:#22C55E; }
+.opb-label { font-size:10px; color:#9CA3AF; margin-top:4px; white-space:nowrap; }
+.opb-label.active { color:#7C3AED; font-weight:700; }
+.opb-line { flex:1; height:2px; background:#E5E7EB; min-width:16px; margin-bottom:14px; }
+.opb-line.done { background:#22C55E; }
+.opb-unknown { font-size:11px; color:#9CA3AF; margin-top:4px; font-style:italic; }
 `;

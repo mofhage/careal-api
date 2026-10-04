@@ -16,6 +16,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: [],
+    setupFiles: ['./src/test-setup.js'],
+    define: {
+      'import.meta.env.VITE_API_BASE': '"/api"',
+    },
   },
 })

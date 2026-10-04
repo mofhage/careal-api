@@ -177,6 +177,39 @@ function PublicServicesView() {
   );
 }
 
+/* ─── Delivery Method Selector ─── */
+function DeliveryMethodSelector({ value, onChange }) {
+  const options = [
+    { value: "agent_delivery",      label: "Have it delivered to you", icon: "🚚", hint: "A field agent brings your documents to you" },
+    { value: "personal_collection", label: "Collect at our office",    icon: "🏢", hint: "Pick up your documents at our office" },
+  ];
+  return (
+    <div className="svc-delivery-section">
+      <label className="svc-plate-label">Delivery Method</label>
+      <div className="svc-delivery-options">
+        {options.map(opt => (
+          <div
+            key={opt.value}
+            className={`svc-delivery-card${value === opt.value ? " selected" : ""}`}
+            onClick={() => onChange(opt.value)}
+            role="radio"
+            aria-checked={value === opt.value}
+            tabIndex={0}
+            onKeyDown={e => e.key === " " && onChange(opt.value)}
+          >
+            <span className="svc-delivery-icon">{opt.icon}</span>
+            <div>
+              <div className="svc-delivery-label">{opt.label}</div>
+              <div className="svc-delivery-hint">{opt.hint}</div>
+            </div>
+            <div className={`svc-delivery-radio${value === opt.value ? " on" : ""}`} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Authenticated services view ─── */
 export default function Services() {
   const navigate = useNavigate();
@@ -186,8 +219,9 @@ export default function Services() {
   const [vehicles,     setVehicles]     = useState([]);
   const [authLoading,  setAuthLoading]  = useState(true);
   const [isLoggedIn,   setIsLoggedIn]   = useState(false);
-  const [selected,     setSelected]     = useState({ license: false, roadworthiness: false, insurance: false });
-  const [plateNumber,  setPlateNumber]  = useState("");
+  const [selected,      setSelected]      = useState({ license: false, roadworthiness: false, insurance: false });
+  const [plateNumber,   setPlateNumber]   = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState("");
   const [showModal,    setShowModal]    = useState(false);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState("");
@@ -240,11 +274,12 @@ export default function Services() {
   const selectedServices = Object.entries(SERVICE_CONFIGS).filter(([k]) => selected[k]);
   const total     = selectedServices.reduce((sum, [, s]) => sum + getPrice(s.priceKey), 0);
   const hasSelection = selectedServices.length > 0;
-  const canProceed   = hasSelection && !!plateNumber && !pricesLoading && !pricesError;
+  const canProceed   = hasSelection && !!plateNumber && !pricesLoading && !pricesError && !!deliveryMethod;
 
-  const disabledReason = !hasSelection && !plateNumber ? "Select a service and a vehicle to continue"
-    : !hasSelection ? "Select at least one service to continue"
-    : !plateNumber  ? "Select a vehicle plate to continue" : "";
+  const disabledReason = !hasSelection ? "Select at least one service to continue"
+    : !plateNumber   ? "Select a vehicle plate to continue"
+    : !deliveryMethod ? "Please choose a delivery method to continue"
+    : "";
 
   const toggle = (key) => setSelected(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -259,7 +294,7 @@ export default function Services() {
       const res = await fetch(`${API_BASE}/payments/initiate`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plate_number: plateNumber, license: selected.license, roadworthiness: selected.roadworthiness, insurance: selected.insurance }),
+        body: JSON.stringify({ plate_number: plateNumber, license: selected.license, roadworthiness: selected.roadworthiness, insurance: selected.insurance, delivery_method: deliveryMethod }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.message || "Failed to initiate payment."); setLoading(false); return; }
@@ -347,6 +382,10 @@ export default function Services() {
               )}
             </div>
 
+            {hasSelection && !!plateNumber && (
+              <DeliveryMethodSelector value={deliveryMethod} onChange={setDeliveryMethod} />
+            )}
+
             <div className="svc-grid">
               {Object.values(SERVICE_CONFIGS).map((svc) => {
                 const on    = selected[svc.key];
@@ -417,6 +456,11 @@ export default function Services() {
           <div className="svc-modal">
             <h2 className="svc-modal-title">Confirm Payment</h2>
             <p className="svc-modal-sub">Vehicle: <strong>{plateNumber}</strong></p>
+            {deliveryMethod && (
+              <p className="svc-modal-sub">
+                Delivery: <strong>{deliveryMethod === "agent_delivery" ? "Have it delivered to you" : "Collect at our office"}</strong>
+              </p>
+            )}
             <div className="svc-divider" />
             {selectedServices.map(([, svc]) => {
               const price = getPrice(svc.priceKey);
