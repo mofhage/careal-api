@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import * as fc from 'fast-check';
 import { getPrices, isValidPriceResponse, _resetCache } from './priceStore.js';
 
@@ -14,20 +13,17 @@ function makeFetchMock(priceData, ok = true, status = 200) {
   });
 }
 
-beforeEach(() => {
-  _resetCache();
-  vi.restoreAllMocks();
-});
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
+
+
 
 // ---------------------------------------------------------------------------
 // Property 3: Displayed prices always equal stored prices
 // Feature: careal-frontend-integration, Property 3: Displayed prices always equal stored prices
 // ---------------------------------------------------------------------------
 describe('Property 3 — getPrices() returns stored values and issues only one network request', () => {
+  beforeEach(() => { _resetCache(); vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); });
   it('holds for 100 randomised valid price objects', async () => {
     await fc.assert(
       fc.asyncProperty(
@@ -69,6 +65,8 @@ describe('Property 3 — getPrices() returns stored values and issues only one n
 // Feature: careal-frontend-integration, Property 4: Invalid price responses are always rejected
 // ---------------------------------------------------------------------------
 describe('Property 4 — isValidPriceResponse() rejects every invalid shape', () => {
+  beforeEach(() => { _resetCache(); vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); });
   it('holds for 100 randomised invalid price objects', () => {
     fc.assert(
       fc.property(
@@ -133,6 +131,8 @@ describe('Property 4 — isValidPriceResponse() rejects every invalid shape', ()
 // Unit tests — Task 2.4
 // ---------------------------------------------------------------------------
 describe('getPrices() — unit tests', () => {
+  beforeEach(() => { _resetCache(); vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); });
   it('cache hit: a second call skips the fetch entirely (fetch called exactly once)', async () => {
     const priceData = {
       licence: { price: 2500 },
@@ -213,6 +213,8 @@ describe('getPrices() — unit tests', () => {
 // Unit tests — isValidPriceResponse()
 // ---------------------------------------------------------------------------
 describe('isValidPriceResponse() — unit tests', () => {
+  beforeEach(() => { _resetCache(); vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); });
   it('returns true for a fully valid response', () => {
     expect(
       isValidPriceResponse({

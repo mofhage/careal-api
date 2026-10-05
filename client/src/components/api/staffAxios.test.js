@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fc from 'fast-check';
+import * as fc from 'fast-check';
 import staffAxios from './staffAxios';
 
 // Runs the registered request interceptor against a plain config object
@@ -16,13 +15,7 @@ function getInterceptedConfig(staffToken, userToken) {
   return handler.fulfilled(config);
 }
 
-beforeEach(() => {
-  localStorage.clear();
-});
 
-afterEach(() => {
-  localStorage.clear();
-});
 
 // ---------------------------------------------------------------------------
 // Property-based test

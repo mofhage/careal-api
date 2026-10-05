@@ -1,6 +1,5 @@
 // Dashboard.test.jsx
 import React from "react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
@@ -62,7 +61,7 @@ describe("OrderProgressBar — stage mapping", () => {
   it("status in_progress: stage 2 active, stage 1 done", async () => {
     vi.stubGlobal("fetch", makeFetch("in_progress", "agent_delivery"));
     renderDashboard();
-    await waitFor(() => screen.getByText("In Progress"));
+    await waitFor(() => screen.getAllByText('In Progress'));
     const dots = document.querySelectorAll(".opb-dot");
     expect(dots[0].classList.contains("done")).toBe(true);
     expect(dots[1].classList.contains("active")).toBe(true);
@@ -89,7 +88,7 @@ describe("OrderProgressBar — delivery label", () => {
   it("final stage label is Delivered when delivery_method is agent_delivery", async () => {
     vi.stubGlobal("fetch", makeFetch("paid", "agent_delivery"));
     renderDashboard();
-    await waitFor(() => expect(screen.getAllByText("Delivered").length).toBeGreaterThan(0));
+    await waitFor(() => screen.getAllByText('Delivered'));
   });
 
   it("final stage label is Collected when delivery_method is personal_collection", async () => {

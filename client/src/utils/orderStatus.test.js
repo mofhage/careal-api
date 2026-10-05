@@ -1,8 +1,7 @@
-import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 import { statusToStage, getDeliveryLabel, getBadgeVariant } from './orderStatus.js';
 
-// ─── Property-Based Tests ────────────────────────────────────────────────────
+// --- Property-Based Tests ────────────────────────────────────────────────────
 
 describe('Property 5: Order status mapping is total and bounded', () => {
   // Feature: careal-frontend-integration, Property 5: Order status mapping is total and bounded
@@ -52,7 +51,7 @@ describe('Property 6: Delivery label is exhaustive and correct', () => {
   });
 });
 
-// ─── Unit Tests ──────────────────────────────────────────────────────────────
+// --- Unit Tests ──────────────────────────────────────────────────────────────
 
 describe('statusToStage — every known status maps to the expected stage', () => {
   it("maps 'paid' to stage 1", () => {
