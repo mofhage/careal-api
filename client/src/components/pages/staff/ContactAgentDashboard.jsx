@@ -50,7 +50,7 @@ function MessagesPanel() {
           <button onClick={loadThreads} style={{padding:'3px 8px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>&#8635;</button>
         </div>
         {err && <div style={{background:'#FEF2F2',color:'#B91C1C',borderRadius:'8px',padding:'8px',fontSize:'12px',marginBottom:8}}>{err}</div>}
-        {loading ? <p style={{color:'#9CA3AF',fontSize:'13px'}}>Loading…</p> : threads.length===0 ? <p style={{color:'#9CA3AF',fontSize:'13px'}}>No open threads.</p> :
+        {loading ? <p style={{color:'#9CA3AF',fontSize:'13px'}}>Loading...</p> : threads.length===0 ? <p style={{color:'#9CA3AF',fontSize:'13px'}}>No open threads.</p> :
           threads.map(t => (
             <div key={t.threadId} onClick={()=>open(t)} style={{padding:'9px 10px',borderRadius:'8px',cursor:'pointer',marginBottom:5,border:'1px solid #EDE9FE',background:sel?.threadId===t.threadId?'#EDE9FE':'#F8F6FF'}}>
               <div style={{fontWeight:600,fontSize:'12px',color:'#1E1040'}}>{t.subject}</div>
@@ -70,8 +70,8 @@ function MessagesPanel() {
           </div>
           {sendErr && <div style={{background:'#FEF2F2',color:'#B91C1C',padding:'8px',borderRadius:'8px',fontSize:'12px',marginBottom:8}}>{sendErr}</div>}
           <div style={{display:'flex',gap:8}}>
-            <textarea value={reply} onChange={e=>setReply(e.target.value)} rows={2} placeholder='Type reply…' style={{flex:1,padding:'8px 12px',border:'1.5px solid #EDE9FE',borderRadius:'10px',resize:'none',fontSize:'13px',fontFamily:'inherit'}}/>
-            <button onClick={send} disabled={!reply.trim()||sending} style={{padding:'0 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontWeight:600,fontSize:'13px',cursor:'pointer'}}>{sending?'…':'Send'}</button>
+            <textarea value={reply} onChange={e=>setReply(e.target.value)} rows={2} placeholder='Type reply...' style={{flex:1,padding:'8px 12px',border:'1.5px solid #EDE9FE',borderRadius:'10px',resize:'none',fontSize:'13px',fontFamily:'inherit'}}/>
+            <button onClick={send} disabled={!reply.trim()||sending} style={{padding:'0 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontWeight:600,fontSize:'13px',cursor:'pointer'}}>{sending?'...':'Send'}</button>
           </div>
         </>)}
       </div>
@@ -84,15 +84,44 @@ function OrdersPanel() {
   const [agents,setAgents]=useState([]);
   const [loading,setLoading]=useState(true);
   const [err,setErr]=useState('');
-  const load=()=>{setLoading(true);staffAxios.get('/orders?status=assigned').then(r=>{const d=r.data;setOrders(Array.isArray(d)?d:d.orders||[]);setLoading(false);}).catch(()=>{setErr('Could not load orders.');setLoading(false);});};
-  useEffect(()=>{load();staffAxios.get('/agents').then(r=>setAgents(Array.isArray(r.data)?r.data:r.data.agents||[])).catch(()=>{});},[]);
+  // Status filter — default empty (all statuses) so contact agents can
+  // see orders at every stage, not just "assigned" ones.
+  const [statusFilter,setStatusFilter]=useState('');
+
+  const load=()=>{
+    setLoading(true);
+    const p=new URLSearchParams();
+    if(statusFilter) p.set('status',statusFilter);
+    staffAxios.get('/orders?'+p.toString()).then(r=>{
+      const d=r.data;
+      setOrders(Array.isArray(d)?d:d.orders||[]);
+      setLoading(false);
+    }).catch(()=>{setErr('Could not load orders.');setLoading(false);});
+  };
+
+  useEffect(()=>{load();},[statusFilter]);
+  useEffect(()=>{staffAxios.get('/agents').then(r=>setAgents(Array.isArray(r.data)?r.data:r.data.agents||[])).catch(()=>{});},[]);
+
   const assign=async(id,aid)=>{if(!aid)return;try{await staffAxios.post('/orders/'+id+'/assign',{agent_id:aid});load();}catch{setErr('Assignment failed.');}}
   const updateStatus=async(id,status)=>{if(!status)return;try{await staffAxios.patch('/orders/'+id+'/status',{status});load();}catch{setErr('Status update failed.');}}
+
   return (
     <div>
       <h2 style={{fontWeight:800,fontSize:'18px',color:'#1E1040',marginBottom:16}}>Order Management</h2>
+
+      {/* Status filter */}
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:'8px 12px',border:'1.5px solid #EDE9FE',borderRadius:'10px',fontSize:'13px',background:'#fff',cursor:'pointer'}}>
+          <option value=''>All Statuses</option>
+          {['paid','assigned','in_progress','ready_for_delivery','ready_for_pickup','delivered','collected'].map(s=>(
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <button onClick={load} style={{padding:'8px 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontSize:'13px',fontWeight:600,cursor:'pointer'}}>Refresh</button>
+      </div>
+
       {err && <div style={{background:'#FEF2F2',border:'1px solid #FECACA',color:'#B91C1C',borderRadius:'10px',padding:'10px 14px',fontSize:'13px',marginBottom:12}}>{err}</div>}
-      {loading ? <p style={{color:'#9CA3AF'}}>Loading…</p> : (
+      {loading ? <p style={{color:'#9CA3AF'}}>Loading...</p> : (
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
             <thead><tr>{['ID','Plate','Status','Delivery','Assign Agent','Mark Status'].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:700,color:'#7C7CA0',fontSize:'11px',textTransform:'uppercase',borderBottom:'1.5px solid #EDE9FE',background:'#F8F6FF'}}>{h}</th>)}</tr></thead>
@@ -103,8 +132,20 @@ function OrdersPanel() {
                 <td style={{padding:'11px 14px',borderBottom:'1px solid #F3F0FF'}}>{o.plate_number}</td>
                 <td style={{padding:'11px 14px',borderBottom:'1px solid #F3F0FF'}}><span style={{background:'#EDE9FE',color:'#7C3AED',padding:'3px 8px',borderRadius:'100px',fontSize:'11px',fontWeight:600}}>{o.status}</span></td>
                 <td style={{padding:'11px 14px',borderBottom:'1px solid #F3F0FF'}}>{o.delivery_method==='agent_delivery'?'Delivery':'Collection'}</td>
-                <td style={{padding:'11px 14px',borderBottom:'1px solid #F3F0FF'}}><select defaultValue='' onChange={e=>assign(o.id,e.target.value)} style={{padding:'5px 8px',border:'1.5px solid #EDE9FE',borderRadius:'8px',fontSize:'12px',cursor:'pointer'}}><option value='' disabled>Select</option>{agents.map(a=><option key={a.id} value={a.id}>{a.first_name} {a.last_name}</option>)}</select></td>
-                <td style={{padding:'11px 14px',borderBottom:'1px solid #F3F0FF'}}><select defaultValue='' onChange={e=>updateStatus(o.id,e.target.value)} style={{padding:'5px 8px',border:'1.5px solid #EDE9FE',borderRadius:'8px',fontSize:'12px',cursor:'pointer'}}><option value='' disabled>Update</option><option value='delivered'>delivered</option><option value='collected'>collected</option></select></td>
+                <td style={{padding:'11px 14px',borderBottom:'1px solid #F3F0FF'}}>
+                  {/* Only show assign if not yet assigned */}
+                  {!o.assigned_agent
+                    ? <select defaultValue='' onChange={e=>assign(o.id,e.target.value)} style={{padding:'5px 8px',border:'1.5px solid #EDE9FE',borderRadius:'8px',fontSize:'12px',cursor:'pointer'}}><option value='' disabled>Select</option>{agents.map(a=><option key={a.id} value={a.id}>{a.first_name} {a.last_name}</option>)}</select>
+                    : <span style={{fontSize:'12px',color:'#7C7CA0'}}>{o.assigned_agent.first_name} {o.assigned_agent.last_name}</span>
+                  }
+                </td>
+                <td style={{padding:'11px 14px',borderBottom:'1px solid #F3F0FF'}}>
+                  <select defaultValue='' onChange={e=>updateStatus(o.id,e.target.value)} style={{padding:'5px 8px',border:'1.5px solid #EDE9FE',borderRadius:'8px',fontSize:'12px',cursor:'pointer'}}>
+                    <option value='' disabled>Update</option>
+                    <option value='delivered'>delivered</option>
+                    <option value='collected'>collected</option>
+                  </select>
+                </td>
               </tr>))}
             </tbody>
           </table>

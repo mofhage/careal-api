@@ -9,7 +9,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: [],
+    setupFiles: ['./src/test-setup.js'],
     testTimeout: 30000,
     server: { deps: { interopDefault: true } },
   },

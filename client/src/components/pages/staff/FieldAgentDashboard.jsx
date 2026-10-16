@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StaffRouteGuard from '../../../components/staff/StaffRouteGuard.jsx';
 import staffAxios from '../../../components/api/staffAxios.js';

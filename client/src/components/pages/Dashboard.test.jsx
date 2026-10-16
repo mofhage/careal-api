@@ -78,7 +78,7 @@ describe("OrderProgressBar — stage mapping", () => {
   it("status delivered: stage 4 active", async () => {
     vi.stubGlobal("fetch", makeFetch("delivered", "agent_delivery"));
     renderDashboard();
-    await waitFor(() => screen.getByText("Delivered"));
+    await waitFor(() => screen.getAllByText("Delivered"));
     const dots = document.querySelectorAll(".opb-dot");
     expect(dots[3].classList.contains("active")).toBe(true);
   });

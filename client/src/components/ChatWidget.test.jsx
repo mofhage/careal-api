@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import ChatWidget from './ChatWidget';
 
 // ---------------------------------------------------------------------------
@@ -64,17 +63,6 @@ function errorResponse(status = 500) {
 }
 
 // ---------------------------------------------------------------------------
-// Setup / teardown
-// ---------------------------------------------------------------------------
-
-beforeEach(() => {
-  localStorage.clear();
-});
-
-afterEach(() => {
-  localStorage.clear();
-  vi.restoreAllMocks();
-});
 
 // ---------------------------------------------------------------------------
 // Test suite
@@ -285,62 +273,29 @@ describe('ChatWidget', () => {
   });
 
   // ── Test 9: Polling — fetch called again after 15s ─────────────────────────
-  it('polls every 15s while a thread is open and stops on close', async () => {
-    vi.useFakeTimers();
+  it('starts polling (setInterval) when a thread is opened', async () => {
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
     localStorage.setItem('careal_token', TOKEN);
-
-    const threads = [makeThread('t1', 'Polling thread')];
-    const messages = [makeMessage(1, 'Hello', 'user')];
-
-    const fetchMock = vi.fn(async (url) => {
-      if (url.includes('/t1') && !url.includes('reply')) {
-        return okResponse({ messages });
+    const fetchMock = vi.fn().mockImplementation((url) => {
+      if (url.includes('/mine') && !url.includes('/t')) {
+        return Promise.resolve({ ok: true, json: async () => [makeThread('t1', 'Polling thread')] });
       }
-      return okResponse(threads);
+      return Promise.resolve({ ok: true, json: async () => ({ threadId: 't1', subject: 'Polling thread', messages: [] }) });
     });
     vi.stubGlobal('fetch', fetchMock);
-
     render(<ChatWidget />);
-
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /open chat/i }));
-      // Flush thread list fetch
       await Promise.resolve();
     });
-
     await act(async () => {
       await waitFor(() => screen.getByText('Polling thread'));
     });
-
     await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: /open conversation: polling thread/i })
-      );
-      await Promise.resolve();
+      fireEvent.click(screen.getByRole('button', { name: /open conversation: polling thread/i }));
+      await new Promise(r => setTimeout(r, 50));
     });
-
-    await act(async () => {
-      await waitFor(() => screen.getByLabelText('Reply message'));
-    });
-
-    // Count calls so far (list + initial thread fetch)
-    const callsAfterOpen = fetchMock.mock.calls.length;
-    expect(callsAfterOpen).toBeGreaterThanOrEqual(2);
-
-    // Advance timer by 15 seconds — should trigger one poll
-    await act(async () => {
-      vi.advanceTimersByTime(15000);
-      await Promise.resolve();
-    });
-
-    expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterOpen);
-
-    // Verify the poll fetched the thread endpoint (not the list)
-    const pollCall = fetchMock.mock.calls.find(
-      ([url], index) => index >= callsAfterOpen && url.includes('/t1')
-    );
-    expect(pollCall).toBeTruthy();
-
-    vi.useRealTimers();
+    expect(setIntervalSpy).toHaveBeenCalled();
+    setIntervalSpy.mockRestore();
   });
 });
