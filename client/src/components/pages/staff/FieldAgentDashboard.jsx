@@ -92,7 +92,7 @@ function FAContent() {
             <div key={o.id} style={CARD}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
                 <div>
-                  <div style={{fontWeight:700,color:'#1E1040'}}>{o.reg_number}</div>
+                  <div style={{fontWeight:700,color:'#1E1040'}}>{o.plate_number}</div>
                   <div style={{fontSize:'12px',color:'#7C7CA0',marginTop:2}}>{o.delivery_method==='agent_delivery'?'🚚 Delivery':'🏢 Collection'} · ID: {String(o.id).slice(0,8)}</div>
                 </div>
               </div>
@@ -115,7 +115,7 @@ function FAContent() {
           {myOrders.map(o=>(
             <div key={o.id} style={CARD}>
               <div style={{marginBottom:10}}>
-                <div style={{fontWeight:700,color:'#1E1040'}}>{o.reg_number}</div>
+                <div style={{fontWeight:700,color:'#1E1040'}}>{o.plate_number}</div>
                 <div style={{fontSize:'12px',color:'#7C7CA0',marginTop:2}}>Status: <span style={{background:'#EDE9FE',color:'#7C3AED',padding:'2px 8px',borderRadius:'100px',fontSize:'11px',fontWeight:600}}>{o.status}</span></div>
               </div>
               {statusErr[o.id]&&<div style={{background:'#FEF2F2',color:'#B91C1C',borderRadius:'8px',padding:'8px',fontSize:'12px',marginBottom:8}}>{statusErr[o.id]}</div>}

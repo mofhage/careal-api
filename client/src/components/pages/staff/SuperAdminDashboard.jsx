@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ï»¿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StaffRouteGuard from '../../../components/staff/StaffRouteGuard.jsx';
 import staffAxios from '../../../components/api/staffAxios.js';
@@ -179,17 +179,18 @@ function MessagesPanel() {
   const send=async()=>{if(!reply.trim()||!sel)return;setSending(true);setSendErr('');try{await staffAxios.post('/messages/staff/'+sel.threadId+'/reply',{message:reply});setReply('');staffAxios.get('/messages/staff/'+sel.threadId).then(r=>setMsgs(r.data.messages||[]));}catch{setSendErr('Could not send reply.');}finally{setSending(false);}};
   const close=async()=>{if(!sel)return;try{await staffAxios.patch('/messages/staff/'+sel.threadId+'/close');setSel(null);load();}catch{setErr('Could not close.');}};
   return(<div style={{display:'flex',gap:16,minHeight:420}}>
-    <div style={{width:230,flexShrink:0,borderRight:'1.5px solid #EDE9FE',paddingRight:12,overflowY:'auto'}}>>      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span style={{fontWeight:700,fontSize:'13px'}}>Threads</span><button onClick={load} style={{padding:'3px 8px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>&#8635;</button></div>
+    <div style={{width:230,flexShrink:0,borderRight:'1.5px solid #EDE9FE',paddingRight:12,overflowY:'auto'}}>      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span style={{fontWeight:700,fontSize:'13px'}}>Threads</span><button onClick={load} style={{padding:'3px 8px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>&#8635;</button></div>
       {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',borderRadius:'8px',padding:'8px',fontSize:'12px',marginBottom:8}}>{err}</div>}
-      {loading?<p style={{color:'#9CA3AF',fontSize:'13px'}}>Loading…</p>:threads.length===0?<p style={{color:'#9CA3AF',fontSize:'13px'}}>No threads.</p>:threads.map(t=>(<div key={t.threadId} onClick={()=>open(t)} style={{padding:'9px 10px',borderRadius:'8px',cursor:'pointer',marginBottom:5,border:'1px solid #EDE9FE',background:sel?.threadId===t.threadId?'#EDE9FE':'#F8F6FF'}}><div style={{fontWeight:600,fontSize:'12px',color:'#1E1040'}}>{t.subject}</div>{t.lastMessage&&<div style={{fontSize:'10px',color:'#9CA3AF'}}>{new Date(t.lastMessage).toLocaleDateString()}</div>}</div>))}
+      {loading?<p style={{color:'#9CA3AF',fontSize:'13px'}}>Loadingï¿½</p>:threads.length===0?<p style={{color:'#9CA3AF',fontSize:'13px'}}>No threads.</p>:threads.map(t=>(<div key={t.threadId} onClick={()=>open(t)} style={{padding:'9px 10px',borderRadius:'8px',cursor:'pointer',marginBottom:5,border:'1px solid #EDE9FE',background:sel?.threadId===t.threadId?'#EDE9FE':'#F8F6FF'}}><div style={{fontWeight:600,fontSize:'12px',color:'#1E1040'}}>{t.subject}</div>{t.lastMessage&&<div style={{fontSize:'10px',color:'#9CA3AF'}}>{new Date(t.lastMessage).toLocaleDateString()}</div>}</div>))}
     </div>
     <div style={{flex:1,display:'flex',flexDirection:'column'}}>
       {!sel?<div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'#9CA3AF'}}>Select a thread</div>:(<>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><strong style={{fontSize:'14px'}}>{sel.subject}</strong><button onClick={close} style={{padding:'4px 12px',background:'#FEE2E2',color:'#B91C1C',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>Close Thread</button></div>
         <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:8,paddingBottom:8}}>{msgs.map(m=>(<div key={m.id} style={{display:'flex',justifyContent:m.sender_type==='staff'?'flex-end':'flex-start'}}><div style={{maxWidth:'75%',padding:'8px 12px',borderRadius:m.sender_type==='staff'?'16px 16px 4px 16px':'16px 16px 16px 4px',background:m.sender_type==='staff'?'#7C3AED':'#F3F4F6',color:m.sender_type==='staff'?'#fff':'#1a1a1a',fontSize:'13px'}}>{m.body}</div></div>))}</div>
         {sendErr&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'8px',borderRadius:'8px',fontSize:'12px',marginBottom:8}}>{sendErr}</div>}
-        <div style={{display:'flex',gap:8}}><textarea value={reply} onChange={e=>setReply(e.target.value)} rows={2} placeholder='Type reply…' style={{flex:1,padding:'8px 12px',border:'1.5px solid #EDE9FE',borderRadius:'10px',resize:'none',fontSize:'13px',fontFamily:'inherit'}}/><button onClick={send} disabled={!reply.trim()||sending} style={{padding:'0 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontWeight:600,fontSize:'13px',cursor:'pointer'}}>{sending?'…':'Send'}</button></div>
+        <div style={{display:'flex',gap:8}}><textarea value={reply} onChange={e=>setReply(e.target.value)} rows={2} placeholder='Type replyï¿½' style={{flex:1,padding:'8px 12px',border:'1.5px solid #EDE9FE',borderRadius:'10px',resize:'none',fontSize:'13px',fontFamily:'inherit'}}/><button onClick={send} disabled={!reply.trim()||sending} style={{padding:'0 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontWeight:600,fontSize:'13px',cursor:'pointer'}}>{sending?'ï¿½':'Send'}</button></div>
       </>)}
     </div>
   </div>);
 }
+
