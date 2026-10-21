@@ -234,11 +234,16 @@ export default function Dashboard() {
           fetch(`${API_BASE}/vehicles`, { headers }),
           fetch(`${API_BASE}/payments`, { headers }),
         ]);
-        if (!profileRes.ok)  throw new Error(`Could not load profile (${profileRes.status})`);
-        if (!vehiclesRes.ok) throw new Error(`Could not load vehicles (${vehiclesRes.status})`);
-        if (!paymentsRes.ok) throw new Error(`Could not load payments (${paymentsRes.status})`);
-        const [profileData, vehiclesData, paymentsData] = await Promise.all([
-          profileRes.json(), vehiclesRes.json(), paymentsRes.json(),
+        const assertJSON=(res,label)=>{
+          const ct=res.headers.get('content-type')||'';
+          if(!ct.includes('application/json'))throw new Error(label+' returned non-JSON response. API may be unreachable. Check VITE_API_BASE.');
+          if(!res.ok)throw new Error('Could not load '+label+' ('+res.status+')');
+        };
+        assertJSON(profileRes,'profile');
+        assertJSON(vehiclesRes,'vehicles');
+        assertJSON(paymentsRes,'payments');
+        const [profileData,vehiclesData,paymentsData]=await Promise.all([
+          profileRes.json(),vehiclesRes.json(),paymentsRes.json(),
         ]);
         setUser(profileData.user || null);
         setVehicles(vehiclesData.vehicles || []);
