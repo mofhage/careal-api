@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { validateContactForm } from "../../utils/validation.js";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 const CHANNELS = [
   {

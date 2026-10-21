@@ -1,11 +1,11 @@
-﻿// ResetPassword.jsx
+// ResetPassword.jsx
 import React, { useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import logo from "../../assets/images/Careal-logo-2.png";
 import { validatePasswordReset } from "../../utils/validation.js";
 import "./Login.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 function ResetPassword() {
   const [searchParams] = useSearchParams();

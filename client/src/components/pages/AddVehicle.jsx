@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 // ✅ Two-fold deployment strategy:
 //    Single host (now):     falls back to "/api" — Vite proxy (dev) / Express (prod)
 //    Separate host (later): set VITE_API_BASE in Render env — no code changes needed
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 const VERIFY_IDLE      = "idle";
 const VERIFY_CHECKING  = "checking";

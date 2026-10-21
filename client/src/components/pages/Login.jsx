@@ -6,7 +6,7 @@ import logo from '../../assets/images/Careal-logo-2.png';
 import "./Pages.css";
 import "./Login.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 function Login() {
   const [email, setEmail] = useState("");

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { statusToStage, getDeliveryLabel } from "../../utils/orderStatus.js";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 const statusConfig = {
   Completed:  { bg: "#F0FDF4", text: "#15803D", dot: "#22C55E", label: "Completed" },
