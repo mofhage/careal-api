@@ -152,6 +152,7 @@ function PricesPanel() {
   };
   const KEYS=[['licence','Vehicle Licence'],['road_worthiness','Road Worthiness'],['insurance','Motor Insurance']];
   return (<div><h2 style={{fontWeight:800,fontSize:'18px',color:'#1E1040',marginBottom:16}}>Service Prices</h2>
+
     {!prices?<p style={{color:loadErr?'#B91C1C':'#9CA3AF'}}>{loadErr||'Loading...'}</p>:(<div style={{display:'flex',flexDirection:'column',gap:14}}>
       {KEYS.map(([key,label])=>(<div key={key} style={{background:'#fff',border:'1.5px solid #EDE9FE',borderRadius:'16px',padding:'20px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span style={{fontWeight:600,color:'#1E1040'}}>{label}</span><span style={{color:'#7C3AED',fontWeight:700,fontSize:'18px'}}>&#8358;{prices[key]?.price?.toLocaleString()}</span></div>
