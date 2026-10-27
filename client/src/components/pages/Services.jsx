@@ -41,7 +41,7 @@ const SERVICE_CONFIGS = {
   },
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 /* ─── Public services showcase (not logged in) ─── */
 function PublicServicesView() {

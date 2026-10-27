@@ -1,9 +1,9 @@
-﻿// Dashboard.jsx â€” Redesigned with animated cards
+// Dashboard.jsx — Redesigned with animated cards
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { statusToStage, getDeliveryLabel } from "../../utils/orderStatus.js";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 const statusConfig = {
   Completed:  { bg: "#F0FDF4", text: "#15803D", dot: "#22C55E", label: "Completed" },
@@ -31,15 +31,15 @@ function StatusBadge({ label }) {
 function expandServices(pmt) {
   const rows = [];
   if (pmt.license && pmt.license_status !== "N/A")
-    rows.push({ id: `${pmt.id}-license`, name: "Vehicle License", icon: "ðŸ“‹",
+    rows.push({ id: `${pmt.id}-license`, name: "Vehicle License", icon: "🚗",
       amount: pmt.license_amount, status: pmt.license_status || "Pending", ref: pmt.payment_ref,
       orderStatus: pmt.status, deliveryMethod: pmt.delivery_method });
   if (pmt.roadworthiness && pmt.roadworthiness_status !== "N/A")
-    rows.push({ id: `${pmt.id}-roadworthiness`, name: "Road Worthiness", icon: "ðŸ›¡ï¸",
+    rows.push({ id: `${pmt.id}-roadworthiness`, name: "Road Worthiness", icon: "🛡️",
       amount: pmt.roadworthiness_amount, status: pmt.roadworthiness_status || "Pending", ref: pmt.payment_ref,
       orderStatus: pmt.status, deliveryMethod: pmt.delivery_method });
   if (pmt.insurance && pmt.insurance_status !== "N/A")
-    rows.push({ id: `${pmt.id}-insurance`, name: "Motor Insurance", icon: "ðŸ“„",
+    rows.push({ id: `${pmt.id}-insurance`, name: "Motor Insurance", icon: "🔄",
       amount: pmt.insurance_amount, status: pmt.insurance_status || "Pending", ref: pmt.payment_ref,
       orderStatus: pmt.status, deliveryMethod: pmt.delivery_method });
   return rows;
@@ -68,7 +68,7 @@ function OrderProgressBar({ status, deliveryMethod }) {
             <React.Fragment key={label}>
               <div className="opb-step">
                 <div className={`opb-dot ${isDone ? "done" : ""} ${isActive ? "active" : ""}`}>
-                  {isDone ? "âœ“" : stageNum}
+                  {isDone ? "✓" : stageNum}
                 </div>
                 <div className={`opb-label ${isActive ? "active" : ""}`}>{label}</div>
               </div>
@@ -110,12 +110,12 @@ function VehicleCard({ vehicle, payments, onPayService, index }) {
       >
         <div className="vehicle-card-left">
           <div className="vehicle-icon-wrap" style={{ background: `linear-gradient(135deg,${from},${to})` }}>
-            ðŸš—
+            🚗
           </div>
           <div className="vehicle-info">
             <div className="vehicle-plate">{vehicle.plate_number}</div>
             <div className="vehicle-meta">
-              {vehicle.make || "â€”"} &bull; {vehicle.color || "â€”"}
+              {vehicle.make || "—"} &bull; {vehicle.color || "—"}
             </div>
             <div className="vehicle-dates">
               Added {new Date(vehicle.created_at).toLocaleDateString("en-NG", {
@@ -133,7 +133,7 @@ function VehicleCard({ vehicle, payments, onPayService, index }) {
           >
             Renew Docs
           </button>
-          <span className={`chevron ${expanded ? "up" : ""}`}>â–¾</span>
+          <span className={`chevron ${expanded ? "up" : ""}`}>▾</span>
         </div>
       </div>
 
@@ -141,7 +141,7 @@ function VehicleCard({ vehicle, payments, onPayService, index }) {
         <div className="vehicle-card-body">
           {serviceRows.length === 0 ? (
             <div className="vehicle-empty-services">
-              <div className="vehicle-empty-icon">ðŸ“</div>
+              <div className="vehicle-empty-icon">📋</div>
               <p>No services recorded yet for this vehicle.</p>
               <button
                 className="vehicle-empty-btn"
@@ -182,14 +182,14 @@ function VehicleCard({ vehicle, payments, onPayService, index }) {
                   <StatusBadge label={row.status} />
                   <span className="service-amount">
                     {row.amount != null && Number(row.amount) > 0
-                      ? `â‚¦${Number(row.amount).toLocaleString()}` : "â€”"}
+                      ? `₦${Number(row.amount).toLocaleString()}` : "—"}
                   </span>
                 </div>
               ))}
               <div className="services-total-row">
                 <span className="services-total-label">Grand Total</span>
                 <span className="services-total-value" style={{ color: from }}>
-                  â‚¦{grandTotal.toLocaleString()}
+                  ₦{grandTotal.toLocaleString()}
                 </span>
               </div>
             </>
@@ -214,7 +214,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (params.get("payment") === "success") {
-      setToast("ðŸŽ‰ Payment confirmed! Your services are now being processed.");
+      setToast("🎉 Payment confirmed! Your services are now being processed.");
       window.history.replaceState({}, "", "/dashboard");
       const t = setTimeout(() => setToast(""), 5000);
       return () => clearTimeout(t);
@@ -234,11 +234,16 @@ export default function Dashboard() {
           fetch(`${API_BASE}/vehicles`, { headers }),
           fetch(`${API_BASE}/payments`, { headers }),
         ]);
-        if (!profileRes.ok)  throw new Error(`Could not load profile (${profileRes.status})`);
-        if (!vehiclesRes.ok) throw new Error(`Could not load vehicles (${vehiclesRes.status})`);
-        if (!paymentsRes.ok) throw new Error(`Could not load payments (${paymentsRes.status})`);
-        const [profileData, vehiclesData, paymentsData] = await Promise.all([
-          profileRes.json(), vehiclesRes.json(), paymentsRes.json(),
+        const assertJSON=(res,label)=>{
+          const ct=res.headers.get('content-type')||'';
+          if(!ct.includes('application/json'))throw new Error(label+' returned non-JSON response. API may be unreachable. Check VITE_API_BASE.');
+          if(!res.ok)throw new Error('Could not load '+label+' ('+res.status+')');
+        };
+        assertJSON(profileRes,'profile');
+        assertJSON(vehiclesRes,'vehicles');
+        assertJSON(paymentsRes,'payments');
+        const [profileData,vehiclesData,paymentsData]=await Promise.all([
+          profileRes.json(),vehiclesRes.json(),paymentsRes.json(),
         ]);
         setUser(profileData.user || null);
         setVehicles(vehiclesData.vehicles || []);
@@ -273,9 +278,9 @@ export default function Dashboard() {
   ).length;
 
   const deliveredCount = payments.filter(p =>
-    ["Delivered","Done"].includes(p.license_status) ||
-    ["Delivered","Done"].includes(p.roadworthiness_status) ||
-    ["Delivered","Done"].includes(p.insurance_status)
+    ["Delivered","Done","Completed"].includes(p.license_status) ||
+    ["Delivered","Done","Completed"].includes(p.roadworthiness_status) ||
+    ["Delivered","Done","Completed"].includes(p.insurance_status)
   ).length;
 
   const totalSpent = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -302,14 +307,14 @@ export default function Dashboard() {
           {loading && (
             <div className="dash-loading">
               <div className="dash-spinner" />
-              <span>Loading your dashboardâ€¦</span>
+              <span>Loading your dashboard…</span>
             </div>
           )}
 
           {/* Error */}
           {!loading && error && (
             <div className="dash-error-box">
-              <div style={{ fontSize: 40, marginBottom: 12 }}>âš ï¸</div>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
               <strong>Could not load dashboard</strong>
               <p>{error}</p>
               <button onClick={() => navigate("/login")} className="dash-error-btn">Go to Login</button>
@@ -324,24 +329,24 @@ export default function Dashboard() {
                 <div className="dash-banner-bg-circle dash-banner-bg-circle-2" />
                 <div className="dash-banner-content">
                   <div className="dash-banner-greeting">{greeting()},</div>
-                  <div className="dash-banner-name">{user.first_name} {user.last_name} ðŸ‘‹</div>
+                  <div className="dash-banner-name">{user.first_name} {user.last_name} 👋</div>
                   <div className="dash-banner-meta">
                     {user.email}
                     {vehicles.length > 0 && (
-                      <> &nbsp;Â·&nbsp; Primary plate: <strong>{vehicles[0].plate_number}</strong></>
+                      <> &nbsp;·&nbsp; Primary plate: <strong>{vehicles[0].plate_number}</strong></>
                     )}
                   </div>
                 </div>
-                <div className="dash-banner-car-emoji">ðŸš—</div>
+                <div className="dash-banner-car-emoji">🚗</div>
               </div>
 
               {/* Stat Cards */}
               <div className="dash-stats">
                 {[
-                  { label: "Vehicles", value: vehicles.length, sub: "Registered", icon: "ðŸš—", color: "#7C3AED", delay: 0 },
-                  { label: "In Progress", value: pendingCount, sub: "Active services", icon: "â³", color: "#F97316", delay: 60 },
-                  { label: "Completed", value: deliveredCount, sub: "Delivered", icon: "âœ…", color: "#16A34A", delay: 120 },
-                  { label: "Total Spent", value: `â‚¦${totalSpent.toLocaleString()}`, sub: "Lifetime", icon: "ðŸ’³", color: "#0369A1", delay: 180, small: true },
+                  { label: "Vehicles", value: vehicles.length, sub: "Registered", icon: "🚗", color: "#7C3AED", delay: 0 },
+                  { label: "In Progress", value: pendingCount, sub: "Active services", icon: "⏳", color: "#F97316", delay: 60 },
+                  { label: "Completed", value: deliveredCount, sub: "Delivered", icon: "✅", color: "#16A34A", delay: 120 },
+                  { label: "Total Spent", value: `₦${totalSpent.toLocaleString()}`, sub: "Lifetime", icon: "💳", color: "#0369A1", delay: 180, small: true },
                 ].map((stat) => (
                   <div className="dash-stat-card" key={stat.label} style={{ animationDelay: `${stat.delay}ms` }}>
                     <div className="dash-stat-icon-wrap" style={{ background: `${stat.color}15` }}>
@@ -362,17 +367,17 @@ export default function Dashboard() {
               <div className="dash-section-header">
                 <div className="dash-section-title">My Vehicles</div>
                 <button className="dash-add-btn" onClick={handleAddVehicle}>
-                  <span>ï¼‹</span> Add Vehicle
+                  <span>＋</span> Add Vehicle
                 </button>
               </div>
 
               {vehicles.length === 0 ? (
                 <div className="dash-empty">
-                  <div className="dash-empty-icon">ðŸš—</div>
+                  <div className="dash-empty-icon">🚗</div>
                   <h3>No vehicles yet</h3>
                   <p>Add your first vehicle to start renewing your documents.</p>
                   <button className="dash-add-btn" onClick={handleAddVehicle} style={{ margin: "0 auto" }}>
-                    <span>ï¼‹</span> Add Vehicle
+                    <span>＋</span> Add Vehicle
                   </button>
                 </div>
               ) : (
@@ -386,10 +391,10 @@ export default function Dashboard() {
               <div className="dash-cta-row">
                 <div className="dash-cta-text">
                   <h3>Ready to renew a document?</h3>
-                  <p>Vehicle License Â· Road Worthiness Â· Motor Insurance â€” all in one place.</p>
+                  <p>Vehicle License · Road Worthiness · Motor Insurance — all in one place.</p>
                 </div>
                 <button className="dash-cta-btn" onClick={handleCtaServices}>
-                  Pay for Service â†’
+                  Pay for Service →
                 </button>
               </div>
             </>

@@ -8,8 +8,24 @@ import express from 'express';
 import pool from '../db.js';
 import { protect } from '../src/middleware/auth.js';
 import { protectStaff, requireRole } from '../src/middleware/staffAuth.js';
+import { validId } from '../src/middleware/validateParams.js';
 
 const router = express.Router();
+router.param('threadId', validId); // malformed ids (e.g. "undefined") -> 400, not a Postgres 500
+
+// Thread shape returned everywhere, matching what the dashboards and chat
+// widget are built on. All original columns are kept; these are added:
+//   threadId    : alias of id
+//   lastMessage : body of the newest message in the thread (or null)
+//   customer    : { first_name, last_name, email } of the user who owns it
+const THREAD_SELECT = `
+  SELECT t.*,
+         t.id AS "threadId",
+         (SELECT m.body FROM messages m WHERE m.thread_id = t.id
+           ORDER BY m.created_at DESC LIMIT 1) AS "lastMessage",
+         json_build_object('first_name', u.first_name, 'last_name', u.last_name, 'email', u.email) AS customer
+    FROM message_threads t
+    LEFT JOIN vehicle_users u ON u.id = t.user_id`;
 
 // ─────────────────────────────────────────────
 // USER SIDE
@@ -25,7 +41,7 @@ router.post('/contact', protect, async (req, res) => {
 
   try {
     const thread = await pool.query(
-      `INSERT INTO message_threads (subject, context_type, user_id) VALUES ($1, 'general', $2) RETURNING *`,
+      `INSERT INTO message_threads (subject, context_type, user_id) VALUES ($1, 'general', $2) RETURNING *, id AS "threadId"`,
       [subject || 'Contact form enquiry', req.user.id]
     );
 
@@ -45,7 +61,7 @@ router.post('/contact', protect, async (req, res) => {
 router.get('/mine', protect, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM message_threads WHERE user_id = $1 ORDER BY updated_at DESC`,
+      `${THREAD_SELECT} WHERE t.user_id = $1 ORDER BY t.updated_at DESC`,
       [req.user.id]
     );
     res.json(result.rows);
@@ -59,7 +75,7 @@ router.get('/mine', protect, async (req, res) => {
 router.get('/mine/:threadId', protect, async (req, res) => {
   try {
     const thread = await pool.query(
-      `SELECT * FROM message_threads WHERE id = $1 AND user_id = $2`,
+      `${THREAD_SELECT} WHERE t.id = $1 AND t.user_id = $2`,
       [req.params.threadId, req.user.id]
     );
     if (thread.rows.length === 0) {
@@ -86,7 +102,7 @@ router.post('/mine/:threadId/reply', protect, async (req, res) => {
 
   try {
     const thread = await pool.query(
-      `SELECT * FROM message_threads WHERE id = $1 AND user_id = $2`,
+      `${THREAD_SELECT} WHERE t.id = $1 AND t.user_id = $2`,
       [req.params.threadId, req.user.id]
     );
     if (thread.rows.length === 0) {
@@ -117,8 +133,8 @@ router.get('/staff', protectStaff, requireRole('contact_agent', 'super_admin'), 
   const { status } = req.query;
   try {
     const result = status
-      ? await pool.query(`SELECT * FROM message_threads WHERE status = $1 ORDER BY updated_at DESC`, [status])
-      : await pool.query(`SELECT * FROM message_threads ORDER BY updated_at DESC`);
+      ? await pool.query(`${THREAD_SELECT} WHERE t.status = $1 ORDER BY t.updated_at DESC`, [status])
+      : await pool.query(`${THREAD_SELECT} ORDER BY t.updated_at DESC`);
     res.json(result.rows);
   } catch (err) {
     console.error('GET /messages/staff error:', err.message);
@@ -129,7 +145,7 @@ router.get('/staff', protectStaff, requireRole('contact_agent', 'super_admin'), 
 // GET /api/messages/staff/:threadId
 router.get('/staff/:threadId', protectStaff, requireRole('contact_agent', 'super_admin'), async (req, res) => {
   try {
-    const thread = await pool.query(`SELECT * FROM message_threads WHERE id = $1`, [req.params.threadId]);
+    const thread = await pool.query(`${THREAD_SELECT} WHERE t.id = $1`, [req.params.threadId]);
     if (thread.rows.length === 0) {
       return res.status(404).json({ message: 'Thread not found' });
     }
@@ -170,7 +186,7 @@ router.post('/staff/:threadId/reply', protectStaff, requireRole('contact_agent',
 router.patch('/staff/:threadId/close', protectStaff, requireRole('contact_agent', 'super_admin'), async (req, res) => {
   try {
     const result = await pool.query(
-      `UPDATE message_threads SET status = 'closed', updated_at = now() WHERE id = $1 RETURNING *`,
+      `UPDATE message_threads SET status = 'closed', updated_at = now() WHERE id = $1 RETURNING *, id AS "threadId"`,
       [req.params.threadId]
     );
     if (result.rows.length === 0) {

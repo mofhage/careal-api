@@ -14,20 +14,20 @@ vi.mock("react-router-dom", async () => {
 function makeFetch(status, deliveryMethod) {
   return vi.fn().mockImplementation((url) => {
     if (url.includes("/profile")) {
-      return Promise.resolve({ ok: true, json: async () => ({ user: { first_name: "Test", last_name: "User", email: "t@t.com" } }) });
+      return Promise.resolve({ ok: true, headers: { get: () => "application/json" }, json: async () => ({ user: { first_name: "Test", last_name: "User", email: "t@t.com" } }) });
     }
     if (url.includes("/vehicles")) {
-      return Promise.resolve({ ok: true, json: async () => ({ vehicles: [{ id: 1, plate_number: "ABC-123", make: "Toyota", color: "Black", created_at: "2024-01-01" }] }) });
+      return Promise.resolve({ ok: true, headers: { get: () => "application/json" }, json: async () => ({ vehicles: [{ id: 1, plate_number: "ABC-123", make: "Toyota", color: "Black", created_at: "2024-01-01" }] }) });
     }
     if (url.includes("/payments")) {
-      return Promise.resolve({ ok: true, json: async () => ([
+      return Promise.resolve({ ok: true, headers: { get: () => "application/json" }, json: async () => ([
         { id: 1, plate_number: "ABC-123", license: true, license_status: "Pending", license_amount: 2500,
           roadworthiness: false, roadworthiness_status: "N/A", roadworthiness_amount: 0,
           insurance: false, insurance_status: "N/A", insurance_amount: 0,
           amount: 2500, payment_ref: "REF-001", status, delivery_method: deliveryMethod }
       ]) });
     }
-    return Promise.resolve({ ok: true, json: async () => ({}) });
+    return Promise.resolve({ ok: true, headers: { get: () => "application/json" }, json: async () => ({}) });
   });
 }
 

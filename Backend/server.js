@@ -17,6 +17,7 @@ import agentsRoutes from './routes/agents.js';
 import messagesRoutes from './routes/messages.js';
 import pricesRoutes from './routes/prices.js';
 import { bootstrapSuperAdmin } from './services/bootstrapSuperAdmin.js';
+import { corsOptionsDelegate } from './src/corsConfig.js';
 
 console.log('JWT_SECRET loaded?', !!process.env.JWT_SECRET);
 console.log('STAFF_JWT_SECRET loaded?', !!process.env.STAFF_JWT_SECRET);
@@ -30,22 +31,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-// Single host:    frontend and backend share a domain, so CORS isn't needed
-//                 for browser requests — but kept for local dev and future
-//                 separate-host scenario
-// Separate host:  add the frontend Render URL to FRONTEND_URLS in .env
-const allowedOrigins = process.env.FRONTEND_URLS?.split(',').map(s => s.trim()) || [];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
+// Which browser origins may call this API is decided in src/corsConfig.js
+// (FRONTEND_URLS + FRONTEND_URL, www and non-www treated as the same site).
+app.use(cors(corsOptionsDelegate()));
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json());
@@ -98,6 +86,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: '🚗 CAREAL Backend Running!' });
 });
 
+// ── Unmatched /api/* → JSON 404 (never index.html) ──────────────────────────
+// Without this, in production the SPA fallback below answers a mistyped or
+// missing /api path with index.html and HTTP 200, which a frontend then fails
+// to parse as JSON ("Unexpected token '<'") and hides the real mistake.
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'API route not found', path: req.originalUrl });
+});
+
 // ── Serve React frontend in production ────────────────────────────────────────
 // Single host on Render: Express serves the Vite build AND handles all API routes
 // Separate host later:   Remove this block; frontend lives on its own Render service
@@ -123,6 +119,14 @@ app.use((req, res) => {
     res.status(404).json({ message: 'Route not found' });
   });
 }
+
+// ── Error handler: always JSON, never an HTML stack page ─────────────────────
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+  if (status >= 500) console.error('Unhandled error:', err.message);
+  res.status(status).json({ message: status === 400 ? 'Malformed request body' : 'Server error' });
+});
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;

@@ -6,7 +6,7 @@ import logo from '../../assets/images/Careal-logo-2.png';
 import "./Pages.css";
 import "./Login.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -24,6 +24,11 @@ function Login() {
         { email, password },
         { withCredentials: true }
       );
+
+      if (!res.data || typeof res.data.token !== "string") {
+        setError("Cannot reach the CAREAL server. Please try again shortly.");
+        return;
+      }
 
       // Save token — same key used across Dashboard, Services, AddVehicle
       localStorage.setItem("careal_token", res.data.token);

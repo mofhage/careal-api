@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 const ROLE_ROUTES={super_admin:"/staff/super-admin",contact_agent:"/staff/contact-agent",field_agent:"/staff/field-agent"};
 export default function StaffLogin() {
   const navigate=useNavigate();
@@ -18,6 +18,8 @@ export default function StaffLogin() {
     setFe({});setLoading(true);
     try{
       const res=await fetch(API_BASE+"/agents/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+      const ct=res.headers&&res.headers.get?(res.headers.get("content-type")||""):"application/json";
+      if(!ct.includes("json")){setError("Cannot reach the CAREAL server. Please try again shortly.");return;}
       const data=await res.json().catch(()=>({}));
       if(res.status===200){
         const role=data.staff?.role;

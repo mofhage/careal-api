@@ -67,7 +67,7 @@ function OrdersPanel() {
       <button onClick={load} style={{padding:'8px 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontSize:'13px',fontWeight:600,cursor:'pointer'}}>Refresh</button>
     </div>
     {error&&<div style={{background:'#FEF2F2',color:'#B91C1C',borderRadius:'10px',padding:'10px 14px',fontSize:'13px',marginBottom:12}}>{error}</div>}
-    {loading?<p style={{color:'#9CA3AF'}}>Loadingï¿½</p>:(<div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+    {loading?<p style={{color:'#9CA3AF'}}>Loading?</p>:(<div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
       <thead><tr>{['ID','Plate','Status','Delivery','Agent','Assign'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
       <tbody>
         {orders.length===0&&<tr><td colSpan={6} style={{...TD,textAlign:'center',color:'#9CA3AF'}}>No orders found.</td></tr>}
@@ -76,7 +76,7 @@ function OrdersPanel() {
           <td style={TD}>{o.plate_number}</td>
           <td style={TD}><span style={{background:'#EDE9FE',color:'#7C3AED',padding:'3px 8px',borderRadius:'100px',fontSize:'11px',fontWeight:600}}>{o.status}</span></td>
           <td style={TD}>{o.delivery_method==='agent_delivery'?'Delivery':'Collection'}</td>
-          <td style={TD}>{o.assigned_agent?o.assigned_agent.first_name+' '+o.assigned_agent.last_name:'ï¿½'}</td>
+          <td style={TD}>{o.assigned_agent?o.assigned_agent.first_name+' '+o.assigned_agent.last_name:'?'}</td>
           <td style={TD}>{!o.assigned_agent&&<select defaultValue='' onChange={e=>assign(o.id,e.target.value)} style={{padding:'5px 8px',border:'1.5px solid #EDE9FE',borderRadius:'8px',fontSize:'12px',cursor:'pointer'}}><option value='' disabled>Select agent</option>{agents.map(a=><option key={a.id} value={a.id}>{a.first_name} {a.last_name}</option>)}</select>}</td>
         </tr>))}
       </tbody></table></div>)}
@@ -103,14 +103,14 @@ function AgentsPanel() {
   return (<div>
     <h2 style={{fontWeight:800,fontSize:'18px',color:'#1E1040',marginBottom:16}}>Agents</h2>
     {error&&<div style={{background:'#FEF2F2',color:'#B91C1C',borderRadius:'10px',padding:'10px',fontSize:'13px',marginBottom:12}}>{error}</div>}
-    {loading?<p style={{color:'#9CA3AF'}}>Loadingï¿½</p>:(<div style={{overflowX:'auto',marginBottom:28}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+    {loading?<p style={{color:'#9CA3AF'}}>Loading?</p>:(<div style={{overflowX:'auto',marginBottom:28}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
       <thead><tr>{['Name','Email','Role','Status','Actions'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
       <tbody>{agents.map(a=>(<tr key={a.id}>
         <td style={TD}>{a.first_name} {a.last_name}</td>
         <td style={TD}>{a.email}</td>
         <td style={TD}>{a.role}</td>
-        <td style={TD}><span style={{background:a.is_active===false?'#FEE2E2':'#DCFCE7',color:a.is_active===false?'#B91C1C':'#15803D',padding:'3px 8px',borderRadius:'100px',fontSize:'11px',fontWeight:600}}>{a.is_active===false?'Revoked':'Active'}</span></td>
-        <td style={TD}>{a.is_active===false?<button onClick={()=>reactivate(a.id)} style={BTN}>Reactivate</button>:<button onClick={()=>revoke(a.id)} style={{...BTN,background:'#FEE2E2',color:'#B91C1C'}}>Revoke</button>}</td>
+        <td style={TD}><span style={{background:a.status==='suspended'?'#FEE2E2':a.status==='invited'?'#FEF9C3':'#DCFCE7',color:a.status==='suspended'?'#B91C1C':a.status==='invited'?'#854D0E':'#15803D',padding:'3px 8px',borderRadius:'100px',fontSize:'11px',fontWeight:600}}>{a.status==='suspended'?'Suspended':a.status==='invited'?'Invited':'Active'}</span></td>
+        <td style={TD}>{a.status==='suspended'&&<button onClick={()=>reactivate(a.id)} style={BTN}>Reactivate</button>}{a.status==='active'&&<button onClick={()=>revoke(a.id)} style={{...BTN,background:'#FEE2E2',color:'#B91C1C'}}>Revoke</button>}</td>
       </tr>))}</tbody>
     </table></div>)}
     <div style={{background:'#fff',border:'1.5px solid #EDE9FE',borderRadius:'16px',padding:'24px'}}>
@@ -127,20 +127,21 @@ function AgentsPanel() {
           <option value='contact_agent'>Contact Agent</option>
           <option value='field_agent'>Field Agent</option>
         </select>
-        <button type='submit' style={{...BTN,padding:'12px'}} disabled={inviting}>{inviting?'Sendingï¿½':'Send Invite'}</button>
+        <button type='submit' style={{...BTN,padding:'12px'}} disabled={inviting}>{inviting?'Sending?':'Send Invite'}</button>
       </form>
     </div>
   </div>);
 }
 
 function PricesPanel() {
-  const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+  const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
   const [prices,setPrices]=useState(null);
+  const [loadErr,setLoadErr]=useState('');
   const [vals,setVals]=useState({});
   const [saving,setSaving]=useState({});
   const [errs,setErrs]=useState({});
   const [oks,setOks]=useState({});
-  useEffect(()=>{fetch(API_BASE+'/prices').then(r=>r.json()).then(d=>{setPrices(d);setVals({licence:d.licence?.price,road_worthiness:d.road_worthiness?.price,insurance:d.insurance?.price});}).catch(()=>{});},[]);
+  useEffect(()=>{fetch(API_BASE+'/prices').then(r=>{if(r.ok===false||(r.headers&&!(r.headers.get('content-type')||'').includes('json')))throw new Error('bad response');return r.json();}).then(d=>{setPrices(d);setVals({licence:d.licence?.price,road_worthiness:d.road_worthiness?.price,insurance:d.insurance?.price});}).catch(()=>setLoadErr('Could not load prices. Please check the connection and try again.'));},[]);
   const save=async key=>{
     const ve=validatePrice(vals[key]);if(ve){setErrs(p=>({...p,[key]:ve}));return;}
     setErrs(p=>({...p,[key]:''}));setSaving(p=>({...p,[key]:true}));
@@ -151,12 +152,12 @@ function PricesPanel() {
   };
   const KEYS=[['licence','Vehicle Licence'],['road_worthiness','Road Worthiness'],['insurance','Motor Insurance']];
   return (<div><h2 style={{fontWeight:800,fontSize:'18px',color:'#1E1040',marginBottom:16}}>Service Prices</h2>
-    {!prices?<p style={{color:'#9CA3AF'}}>Loadingï¿½</p>:(<div style={{display:'flex',flexDirection:'column',gap:14}}>
+    {!prices?<p style={{color:loadErr?'#B91C1C':'#9CA3AF'}}>{loadErr||'Loading...'}</p>:(<div style={{display:'flex',flexDirection:'column',gap:14}}>
       {KEYS.map(([key,label])=>(<div key={key} style={{background:'#fff',border:'1.5px solid #EDE9FE',borderRadius:'16px',padding:'20px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span style={{fontWeight:600,color:'#1E1040'}}>{label}</span><span style={{color:'#7C3AED',fontWeight:700,fontSize:'18px'}}>&#8358;{prices[key]?.price?.toLocaleString()}</span></div>
         <div style={{display:'flex',gap:8,alignItems:'flex-start',flexWrap:'wrap'}}>
           <div style={{flex:1,minWidth:120}}><input type='number' value={vals[key]||''} onChange={e=>setVals(p=>({...p,[key]:e.target.value}))} style={{width:'100%',padding:'10px 14px',border:'1.5px solid #EDE9FE',borderRadius:'10px',fontSize:'14px',color:'#1E1040',background:'#FAFAFE',outline:'none',boxSizing:'border-box'}} placeholder='New price'/>{errs[key]&&<span style={{fontSize:'12px',color:'#DC2626'}}>{errs[key]}</span>}</div>
-          <button onClick={()=>save(key)} style={{padding:'10px 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontSize:'13px',fontWeight:600,cursor:'pointer'}} disabled={saving[key]}>{saving[key]?'Savingï¿½':'Save'}</button>
+          <button onClick={()=>save(key)} style={{padding:'10px 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontSize:'13px',fontWeight:600,cursor:'pointer'}} disabled={saving[key]}>{saving[key]?'Saving?':'Save'}</button>
           {oks[key]&&<span style={{color:'#15803D',fontSize:'13px',alignSelf:'center'}}>&#10003; {oks[key]}</span>}
         </div>
       </div>))}
@@ -179,17 +180,18 @@ function MessagesPanel() {
   const send=async()=>{if(!reply.trim()||!sel)return;setSending(true);setSendErr('');try{await staffAxios.post('/messages/staff/'+sel.threadId+'/reply',{message:reply});setReply('');staffAxios.get('/messages/staff/'+sel.threadId).then(r=>setMsgs(r.data.messages||[]));}catch{setSendErr('Could not send reply.');}finally{setSending(false);}};
   const close=async()=>{if(!sel)return;try{await staffAxios.patch('/messages/staff/'+sel.threadId+'/close');setSel(null);load();}catch{setErr('Could not close.');}};
   return(<div style={{display:'flex',gap:16,minHeight:420}}>
-    <div style={{width:230,flexShrink:0,borderRight:'1.5px solid #EDE9FE',paddingRight:12,overflowY:'auto'}}>>      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span style={{fontWeight:700,fontSize:'13px'}}>Threads</span><button onClick={load} style={{padding:'3px 8px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>&#8635;</button></div>
+    <div style={{width:230,flexShrink:0,borderRight:'1.5px solid #EDE9FE',paddingRight:12,overflowY:'auto'}}>      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span style={{fontWeight:700,fontSize:'13px'}}>Threads</span><button onClick={load} style={{padding:'3px 8px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>&#8635;</button></div>
       {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',borderRadius:'8px',padding:'8px',fontSize:'12px',marginBottom:8}}>{err}</div>}
-      {loading?<p style={{color:'#9CA3AF',fontSize:'13px'}}>Loading…</p>:threads.length===0?<p style={{color:'#9CA3AF',fontSize:'13px'}}>No threads.</p>:threads.map(t=>(<div key={t.threadId} onClick={()=>open(t)} style={{padding:'9px 10px',borderRadius:'8px',cursor:'pointer',marginBottom:5,border:'1px solid #EDE9FE',background:sel?.threadId===t.threadId?'#EDE9FE':'#F8F6FF'}}><div style={{fontWeight:600,fontSize:'12px',color:'#1E1040'}}>{t.subject}</div>{t.lastMessage&&<div style={{fontSize:'10px',color:'#9CA3AF'}}>{new Date(t.lastMessage).toLocaleDateString()}</div>}</div>))}
+      {loading?<p style={{color:'#9CA3AF',fontSize:'13px'}}>Loading?</p>:threads.length===0?<p style={{color:'#9CA3AF',fontSize:'13px'}}>No threads.</p>:threads.map(t=>(<div key={t.threadId} onClick={()=>open(t)} style={{padding:'9px 10px',borderRadius:'8px',cursor:'pointer',marginBottom:5,border:'1px solid #EDE9FE',background:sel?.threadId===t.threadId?'#EDE9FE':'#F8F6FF'}}><div style={{fontWeight:600,fontSize:'12px',color:'#1E1040'}}>{t.subject}</div>{t.lastMessage&&<div style={{fontSize:'10px',color:'#9CA3AF'}}>{new Date(t.lastMessage).toLocaleDateString()}</div>}</div>))}
     </div>
     <div style={{flex:1,display:'flex',flexDirection:'column'}}>
       {!sel?<div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'#9CA3AF'}}>Select a thread</div>:(<>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><strong style={{fontSize:'14px'}}>{sel.subject}</strong><button onClick={close} style={{padding:'4px 12px',background:'#FEE2E2',color:'#B91C1C',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>Close Thread</button></div>
         <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:8,paddingBottom:8}}>{msgs.map(m=>(<div key={m.id} style={{display:'flex',justifyContent:m.sender_type==='staff'?'flex-end':'flex-start'}}><div style={{maxWidth:'75%',padding:'8px 12px',borderRadius:m.sender_type==='staff'?'16px 16px 4px 16px':'16px 16px 16px 4px',background:m.sender_type==='staff'?'#7C3AED':'#F3F4F6',color:m.sender_type==='staff'?'#fff':'#1a1a1a',fontSize:'13px'}}>{m.body}</div></div>))}</div>
         {sendErr&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'8px',borderRadius:'8px',fontSize:'12px',marginBottom:8}}>{sendErr}</div>}
-        <div style={{display:'flex',gap:8}}><textarea value={reply} onChange={e=>setReply(e.target.value)} rows={2} placeholder='Type reply…' style={{flex:1,padding:'8px 12px',border:'1.5px solid #EDE9FE',borderRadius:'10px',resize:'none',fontSize:'13px',fontFamily:'inherit'}}/><button onClick={send} disabled={!reply.trim()||sending} style={{padding:'0 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontWeight:600,fontSize:'13px',cursor:'pointer'}}>{sending?'…':'Send'}</button></div>
+        <div style={{display:'flex',gap:8}}><textarea value={reply} onChange={e=>setReply(e.target.value)} rows={2} placeholder='Type reply?' style={{flex:1,padding:'8px 12px',border:'1.5px solid #EDE9FE',borderRadius:'10px',resize:'none',fontSize:'13px',fontFamily:'inherit'}}/><button onClick={send} disabled={!reply.trim()||sending} style={{padding:'0 16px',background:'#7C3AED',color:'#fff',border:'none',borderRadius:'10px',fontWeight:600,fontSize:'13px',cursor:'pointer'}}>{sending?'?':'Send'}</button></div>
       </>)}
     </div>
   </div>);
 }
+

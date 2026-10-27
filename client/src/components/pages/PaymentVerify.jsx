@@ -1,11 +1,11 @@
-﻿// PaymentVerify.jsx
+// PaymentVerify.jsx
 // Flutterwave redirects here with ?transaction_id=xxx&tx_ref=yyy&status=zzz
 // Calls POST /api/payments/verify, then navigates to /dashboard?payment=success
 
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 export default function PaymentVerify() {
   const navigate     = useNavigate();

@@ -5,7 +5,7 @@ import axios from "axios";
 import "./Pages.css";
 import "./Signup.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 function Signup() {
   const [formData, setFormData] = useState({

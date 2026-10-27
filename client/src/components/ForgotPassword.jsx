@@ -1,9 +1,9 @@
-﻿// ForgotPassword.jsx
+// ForgotPassword.jsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");

@@ -278,7 +278,7 @@ router.post('/webhook', async (req, res) => {
 router.get('/', protect, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM vehicle_payments WHERE user_id = $1 ORDER BY created_at DESC',
+      'SELECT *, reg_number AS plate_number FROM vehicle_payments WHERE user_id = $1 ORDER BY created_at DESC',
       [req.user.id]
     );
     res.json(result.rows);

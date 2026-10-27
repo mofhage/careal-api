@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://careal-backend.onrender.com/api";
 
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();

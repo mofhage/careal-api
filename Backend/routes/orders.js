@@ -5,8 +5,26 @@ import express from 'express';
 import pool from '../db.js';
 import { protectStaff, requireRole } from '../src/middleware/staffAuth.js';
 import { sendAgentAssignmentEmail, sendDeliveryConfirmationEmail } from '../services/emailService.js';
+import { validId } from '../src/middleware/validateParams.js';
 
 const router = express.Router();
+router.param('id', validId); // malformed ids -> 400 instead of a Postgres 500
+
+// Every order list returns the same enriched shape the dashboards are built on:
+//   - plate_number  : alias of reg_number (the column name in vehicle_payments)
+//   - assigned_agent: { id, first_name, last_name, email } or null
+//   - customer      : { first_name, last_name, email } of the paying user
+// All original columns (reg_number, assigned_agent_id, ...) are still returned.
+const ORDER_SELECT = `
+  SELECT vp.*,
+         vp.reg_number AS plate_number,
+         CASE WHEN s.id IS NULL THEN NULL
+              ELSE json_build_object('id', s.id, 'first_name', s.first_name,
+                                     'last_name', s.last_name, 'email', s.email) END AS assigned_agent,
+         json_build_object('first_name', u.first_name, 'last_name', u.last_name, 'email', u.email) AS customer
+    FROM vehicle_payments vp
+    LEFT JOIN staff_users  s ON s.id = vp.assigned_agent_id
+    LEFT JOIN vehicle_users u ON u.id = vp.user_id`;
 
 const ALLOWED_STATUSES = [
   'paid',
@@ -41,7 +59,7 @@ async function logStatus(paymentId, status, changedByType, changedById, note = n
 router.get('/pending', protectStaff, requireRole('field_agent', 'contact_agent', 'super_admin'), async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM vehicle_payments WHERE assigned_agent_id IS NULL AND status = 'paid' ORDER BY created_at ASC`
+      `${ORDER_SELECT} WHERE vp.assigned_agent_id IS NULL AND vp.status = 'paid' ORDER BY vp.created_at ASC`
     );
     res.json(result.rows);
   } catch (err) {
@@ -52,28 +70,28 @@ router.get('/pending', protectStaff, requireRole('field_agent', 'contact_agent',
 
 // ─────────────────────────────────────────────
 // GET /api/orders
-// super_admin only — full list with optional filters, for reconciliation
+// super_admin + contact_agent — full list with optional filters (reconciliation / support)
 // query: ?status=&delivery_method=
 // ─────────────────────────────────────────────
-router.get('/', protectStaff, requireRole('super_admin'), async (req, res) => {
+router.get('/', protectStaff, requireRole('super_admin', 'contact_agent'), async (req, res) => {
   const { status, delivery_method } = req.query;
   const conditions = [];
   const values = [];
 
   if (status) {
     values.push(status);
-    conditions.push(`status = $${values.length}`);
+    conditions.push(`vp.status = $${values.length}`);
   }
   if (delivery_method) {
     values.push(delivery_method);
-    conditions.push(`delivery_method = $${values.length}`);
+    conditions.push(`vp.delivery_method = $${values.length}`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   try {
     const result = await pool.query(
-      `SELECT * FROM vehicle_payments ${where} ORDER BY created_at DESC`,
+      `${ORDER_SELECT} ${where} ORDER BY vp.created_at DESC`,
       values
     );
     res.json(result.rows);
@@ -90,7 +108,7 @@ router.get('/', protectStaff, requireRole('super_admin'), async (req, res) => {
 router.get('/mine', protectStaff, requireRole('field_agent', 'contact_agent'), async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM vehicle_payments WHERE assigned_agent_id = $1 ORDER BY created_at DESC`,
+      `${ORDER_SELECT} WHERE vp.assigned_agent_id = $1 ORDER BY vp.created_at DESC`,
       [req.staff.id]
     );
     res.json(result.rows);
@@ -110,7 +128,7 @@ router.post('/:id/pick', protectStaff, requireRole('field_agent'), async (req, r
       `UPDATE vehicle_payments
           SET assigned_agent_id = $1, status = 'assigned'
         WHERE id = $2 AND assigned_agent_id IS NULL
-        RETURNING *`,
+        RETURNING *, reg_number AS plate_number`,
       [req.staff.id, req.params.id]
     );
 
@@ -147,7 +165,7 @@ router.post('/:id/assign', protectStaff, requireRole('super_admin', 'contact_age
     }
 
     const result = await pool.query(
-      `UPDATE vehicle_payments SET assigned_agent_id = $1, status = 'assigned' WHERE id = $2 RETURNING *`,
+      `UPDATE vehicle_payments SET assigned_agent_id = $1, status = 'assigned' WHERE id = $2 RETURNING *, reg_number AS plate_number`,
       [agent_id, req.params.id]
     );
     if (result.rows.length === 0) {
@@ -211,7 +229,7 @@ router.patch(
 
       values.push(req.params.id);
       const result = await pool.query(
-        `UPDATE vehicle_payments SET ${updateFields.join(', ')} WHERE id = $${values.length} RETURNING *`,
+        `UPDATE vehicle_payments SET ${updateFields.join(', ')} WHERE id = $${values.length} RETURNING *, reg_number AS plate_number`,
         values
       );
 

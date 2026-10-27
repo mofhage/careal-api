@@ -131,10 +131,20 @@ export const staffLogin = async (req, res) => {
 };
 
 // ──────────────────────────────────────────────
-// GET /api/agents  (super_admin only)
+// GET /api/agents  (super_admin: all staff; contact_agent: active field agents only)
 // ──────────────────────────────────────────────
 export const listAgents = async (req, res) => {
   try {
+    if (req.staff.role === 'contact_agent') {
+      // Limited view: assignable field agents only, no emails or other staff.
+      const limited = await pool.query(
+        `SELECT id, first_name, last_name, role, is_online, rating
+           FROM staff_users
+          WHERE role = 'field_agent' AND status = 'active'
+          ORDER BY is_online DESC, first_name ASC`
+      );
+      return res.json(limited.rows);
+    }
     const result = await pool.query(
       `SELECT id, first_name, last_name, email, role, status, is_online, rating, created_at
          FROM staff_users ORDER BY created_at DESC`
